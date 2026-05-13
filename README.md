@@ -34,9 +34,9 @@ This project aims to unify capabilities from major open-source space flight dyna
 |---------|--------|------|-----|
 | **Numerical Integrators** | Runge-Kutta (various), Adams-Bashforth, Adams-Moulton, Dormand-Prince | Runge-Kutta, PrinceDormand45/78, Adams-Bashforth-Moulton, Bulirsch-Stoer | 4th-order Runge-Kutta |
 | **Analytical Propagators** | Kepler, Brouwer-Lyddane, Eckstein-Hechler | Keplerian (two-body) | Two-body, Three-body |
-| **SGP4/SDP4 (TLE)** | ✅ Full support + TLE generation | ✅ TLE propagation (R2022a+) | ❌ |
+| **SGP4/SDP4 (TLE)** | ✅ Full support + TLE generation | ✅ TLE propagation (R2022a+) | ✅ Parses TLEs, converts to other formats |
 | **DSST (Semi-analytical)** | ✅ Draper Semi-analytical Satellite Theory | ❌ | ❌ |
-| **Ephemeris Propagation** | ✅ SP3, SPICE, tabulated | ✅ SPICE, Code500 ephemeris | ✅ Meeus algorithms |
+| **Ephemeris Propagation** | ✅ SP3, SPICE, tabulated | ✅ SPICE, Code500 ephemeris | ✅ Meeus algorithms, DE430/DE440 (SPICE as local text files) |
 | **Multi-spacecraft** | ✅ Parallel propagation | ✅ Coupled dynamics, synchronized epochs | ✅ Concurrent multi-spacecraft |
 | **CR3BP/Libration Points** | ✅ Halo orbit propagation | ✅ Libration point missions | ✅ Three-body orbits |
 | **Flexible Body Dynamics** | ❌ | ❌ | ✅ Rigid and flexible bodies |
@@ -50,7 +50,7 @@ This project aims to unify capabilities from major open-source space flight dyna
 | **Gravity (Spherical Harmonics)** | ✅ ICGEM, EGM, SHA formats | ✅ COF, GRV, GFC, TAB formats | ✅ EGM96 (Earth), GMM-2B (Mars), GLGM2 (Luna) up to 18x18 |
 | **Max Gravity Degree/Order** | Configurable (70x70+) | Configurable (70x70+) | 18x18 |
 | **Third Body** | ✅ Sun, Moon, planets | ✅ Sun, Moon, planets | ✅ All planets and major moons |
-| **Atmospheric Drag** | ✅ DTM2000, JB2006/2008, NRLMSISE-00, Harris-Priester | ✅ Jacchia-Roberts, MSISE90, JB2008 | ✅ Jacchia-Roberts (Earth), Exponential (Mars) |
+| **Atmospheric Drag** | ✅ DTM2000, JB2006/2008, NRLMSISE-00, Harris-Priester | ✅ Jacchia-Roberts, MSISE90, JB2008 | ✅ NRLMSISE-00 (Earth), Exponential (Mars) |
 | **Solar Radiation Pressure** | ✅ With eclipse modeling | ✅ Basic + N-plate SRP (R2022a+) | ✅ |
 | **Solid Tides** | ✅ | ✅ | ❌ |
 | **Ocean Tides** | ✅ | ✅ | ❌ |
@@ -83,14 +83,14 @@ This project aims to unify capabilities from major open-source space flight dyna
 | **Circular** | ✅ For near-circular orbits | ❌ | ❌ |
 | **Equinoctial** | ✅ Singularity-free | ✅ ModifiedEquinoctial | ❌ |
 | **Spherical** | ❌ | ✅ RMAG, RA, DEC, VMAG, AZI, FPA | ❌ |
-| **Two-Line Elements** | ✅ Parse and generate | ✅ Parse and propagate | ❌ |
+| **Two-Line Elements** | ✅ Parse and generate | ✅ Parse and propagate | ✅ Parse and convert |
 
 ### 5. Time Systems
 
 | Feature | OreKit | GMAT | 42 |
 |---------|--------|------|-----|
 | **UTC** | ✅ With leap seconds | ✅ UTCGregorian, UTCModJulian | ✅ |
-| **TAI** | ✅ | ✅ TAIGregorian, TAIModJulian | ❌ |
+| **TAI** | ✅ | ✅ TAIGregorian, TAIModJulian | ✅ AtomicTime |
 | **TT (Terrestrial Time)** | ✅ | ✅ TTGregorian, TTModJulian | ✅ |
 | **TDB (Barycentric)** | ✅ | ✅ TDBGregorian, TDBModJulian | ✅ |
 | **GPS Time** | ✅ | ✅ | ✅ |
@@ -105,7 +105,7 @@ This project aims to unify capabilities from major open-source space flight dyna
 | **Finite Burns** | ✅ Continuous thrust | ✅ FiniteBurn with thruster models | ✅ Thruster models |
 | **Low-Thrust** | ✅ | ✅ | ✅ |
 | **Propulsion Modeling** | ✅ User-defined | ✅ Tanks, Thrusters, ISP, thrust curves | ✅ Thrusters with fuel consumption |
-| **Mass Decrement** | ✅ | ✅ | ✅ |
+| **Mass Decrement** | ✅ | ✅ | ❌ |
 | **Thrust Direction** | ✅ Any frame | ✅ VNB, Body-fixed, inertial | ✅ Body-fixed |
 | **Maneuver Triggers** | ✅ Event-based | ✅ Command-based | ✅ Flight software control |
 
@@ -115,7 +115,7 @@ This project aims to unify capabilities from major open-source space flight dyna
 |---------|--------|------|-----|
 | **Differential Corrector** | ❌ (use external) | ✅ Newton-Raphson, Broyden, Modified Broyden | ❌ |
 | **Batch Least Squares** | ✅ Levenberg-Marquardt, Gauss-Newton | ✅ Batch Estimator | ❌ |
-| **Kalman Filters** | ✅ EKF, UKF, Semi-analytical | ✅ Extended Kalman Filter | ❌ |
+| **Kalman Filters** | ✅ EKF, UKF, Semi-analytical | ✅ Extended Kalman Filter | ✅ Starter filter (fswkit.c) |
 | **Smoother** | ✅ RTS smoother | ✅ EKF Smoother (R2022a+) | ❌ |
 | **Nonlinear Programming** | ❌ | ✅ VF13ad (SQP), fmincon (MATLAB) | ❌ |
 | **Targeting** | ❌ | ✅ Target/Vary/Achieve commands | ❌ |
@@ -139,8 +139,8 @@ This project aims to unify capabilities from major open-source space flight dyna
 | Feature | OreKit | GMAT | 42 |
 |---------|--------|------|-----|
 | **Initial Orbit Determination** | ✅ Gibbs, Herrick-Gibbs, Gooding, Lambert, Gauss, Laplace | ✅ IOD capability (R2022a+) | ❌ |
-| **Range Measurements** | ✅ One-way, two-way, TDRSS | ✅ | ❌ |
-| **Range-Rate (Doppler)** | ✅ | ✅ | ❌ |
+| **Range Measurements** | ✅ One-way, two-way, TDRSS | ✅ | ✅ Via 42commlink.c |
+| **Range-Rate (Doppler)** | ✅ | ✅ | ✅ Via 42commlink.c |
 | **Angles (Az/El, RA/Dec)** | ✅ | ✅ | ❌ |
 | **GNSS Measurements** | ✅ Code, carrier phase, ambiguity resolution | ❌ Limited | ✅ GPS receiver model |
 | **TDOA/FDOA** | ✅ | ❌ | ❌ |
@@ -151,8 +151,8 @@ This project aims to unify capabilities from major open-source space flight dyna
 | Feature | OreKit | GMAT | 42 |
 |---------|--------|------|-----|
 | **Mass Properties** | ✅ Dry mass, fuel mass | ✅ DryMass, FuelMass | ✅ Mass, inertia tensor |
-| **Drag Properties** | ✅ Cd, drag area | ✅ Cd, DragArea | ✅ Cd, drag area |
-| **SRP Properties** | ✅ Cr, SRP area | ✅ Cr, SRPArea | ✅ Cr, SRP area |
+| **Drag Properties** | ✅ Cd, drag area | ✅ Cd, DragArea | ✅ Cd, area recomputed per timestep |
+| **SRP Properties** | ✅ Cr, SRP area | ✅ Cr, SRPArea | ✅ SpecFrac/DiffFrac, area recomputed per timestep |
 | **Tanks** | ✅ Basic | ✅ ChemicalTank, ElectricTank | ✅ |
 | **Thrusters** | ✅ Basic | ✅ ChemicalThruster, ElectricThruster | ✅ Multiple thruster types |
 | **Power Systems** | ❌ | ✅ SolarPowerSystem, NuclearPowerSystem | ❌ |
@@ -166,7 +166,7 @@ This project aims to unify capabilities from major open-source space flight dyna
 |---------|--------|------|-----|
 | **Attitude Dynamics** | ✅ Kinematic only | ✅ Limited | ✅ Full 6-DOF dynamics |
 | **Attitude Laws** | ✅ Nadir, target tracking, yaw compensation, spin, inertial | ✅ CoordinateSystemFixed, Spinner, NadirPointing | ✅ Multiple pointing modes |
-| **Euler Angles** | ✅ | ✅ All 12 sequences | ✅ |
+| **Euler Angles** | ✅ | ✅ All 12 sequences | ✅ All 12 sequences |
 | **Quaternions** | ✅ | ✅ | ✅ |
 | **Direction Cosine Matrix** | ✅ | ✅ | ✅ |
 | **Modified Rodrigues** | ❌ | ✅ | ❌ |
@@ -192,7 +192,7 @@ This project aims to unify capabilities from major open-source space flight dyna
 
 | Feature | OreKit | GMAT | 42 |
 |---------|--------|------|-----|
-| **TLE** | ✅ Read/Write | ✅ Read | ❌ |
+| **TLE** | ✅ Read/Write | ✅ Read | ✅ Read |
 | **SP3** | ✅ versions a-d | ❌ | ❌ |
 | **CCSDS OEM** | ✅ | ✅ | ❌ |
 | **CCSDS AEM** | ✅ | ✅ | ❌ |
@@ -207,7 +207,7 @@ This project aims to unify capabilities from major open-source space flight dyna
 |---------|--------|------|-----|
 | **3D Orbit View** | ❌ (external tools) | ✅ OrbitView with OpenGL | ✅ OpenGL visualization |
 | **Spacecraft 3D Model** | ❌ | ✅ | ✅ Attitude visualization |
-| **Ground Track Plot** | ❌ | ✅ GroundTrackPlot | ❌ |
+| **Ground Track Plot** | ❌ | ✅ GroundTrackPlot | ✅ Map window |
 | **XY Plots** | ❌ | ✅ XYPlot | ❌ |
 | **Report Files** | ❌ | ✅ ReportFile | ✅ Text output |
 | **Real-time Display** | ❌ | ❌ | ✅ |
@@ -252,7 +252,7 @@ This project aims to unify capabilities from major open-source space flight dyna
 | **Force Models** | Most complete (albedo, tides, etc.) | Good coverage, simpler config | Attitude-relevant forces |
 | **Attitude** | Kinematic only | Basic modeling | Full 6-DOF dynamics with sensors/actuators |
 | **Sensors/Actuators** | None | None | Comprehensive GNC hardware models |
-| **Estimation** | Superior GNSS support, IOD | Integrated targeting | None |
+| **Estimation** | Superior GNSS support, IOD | Integrated targeting | Starter Kalman filter (fswkit.c) |
 | **Solvers** | External optimization | Built-in DC, NLP, targeting | None |
 | **Visualization** | None (external) | Integrated 3D/2D plotting | Real-time 3D attitude display |
 | **Learning Curve** | Steeper (API-based) | Moderate (GUI + script) | Moderate (config files) |
@@ -317,9 +317,9 @@ This project aims to unify capabilities from major open-source space flight dyna
 |---------|--------|------|-----|--------|
 | Dry Mass | `SpacecraftState.getMass()` | `DryMass` | `mass` | N/A |
 | Drag Coefficient | `IsotropicDrag.getCd()` | `Cd` | `Cd` | N/A |
-| Reflectivity Coeff | `IsotropicRadiationSingleCoefficient.getCr()` | `Cr` | `Cr` | N/A |
-| Drag Area | `IsotropicDrag.getCrossSection()` | `DragArea` | `DragArea` | N/A |
-| SRP Area | `IsotropicRadiationSingleCoefficient.getCrossSection()` | `SRPArea` | `SRPArea` | N/A |
+| Reflectivity Coeff | `IsotropicRadiationSingleCoefficient.getCr()` | `Cr` | `SpecFrac`, `DiffFrac` | N/A |
+| Drag Area | `IsotropicDrag.getCrossSection()` | `DragArea` | Recomputed per timestep | N/A |
+| SRP Area | `IsotropicRadiationSingleCoefficient.getCrossSection()` | `SRPArea` | Recomputed per timestep | N/A |
 | Inertia Tensor | N/A | N/A | `I` (3x3) | N/A |
 
 ### Attitude Representations
@@ -385,7 +385,7 @@ This project aims to unify capabilities from major open-source space flight dyna
 | Gravity Degree | User-defined | 4 | 18 |
 | Gravity Order | User-defined | 4 | 18 |
 | Gravity Model | User-defined | JGM2 | EGM96 |
-| Atmospheric Model | User-defined | Jacchia-Roberts | Jacchia-Roberts |
+| Atmospheric Model | User-defined | Jacchia-Roberts | NRLMSISE-00 |
 | Magnetic Field | IGRF/WMM | N/A | IGRF |
 
 ---
@@ -393,6 +393,7 @@ This project aims to unify capabilities from major open-source space flight dyna
 ## References
 
 - [OreKit 13.1.3 API Documentation](https://www.orekit.org/site-orekit-13.1.3/apidocs/index.html)
+- [GMAT GitHub Repository](https://github.com/nasa/GMAT)
 - [NASA GMAT Software Catalog](https://software.nasa.gov/software/GSC-19097-1)
 - [GMAT Wiki](https://gmat.atlassian.net/wiki/spaces/GW/overview)
 - [42 GitHub Repository](https://github.com/ericstoneking/42)
@@ -554,7 +555,7 @@ SpacecraftState finalState = propagator.propagate(initialDate.shiftedBy(86400));
 
 ### GMAT Architecture
 
-**Repository:** [SourceForge](https://sourceforge.net/projects/gmat/) | [GitHub Fork](https://github.com/ChristopherRabotin/GMAT)
+**Repository:** [GitHub](https://github.com/nasa/GMAT) | [SourceForge](https://sourceforge.net/projects/gmat/)
 **Language:** C++ (66.5%), with Fortran, Python, HTML
 **License:** Apache 2.0
 **Latest Version:** R2025a
@@ -771,34 +772,61 @@ Propagate DefaultProp(Sat) {Sat.ElapsedDays = 1};
 │   ├── 42main.c        # Main entry point
 │   ├── 42init.c        # Initialization routines
 │   ├── 42dynamics.c    # Dynamics propagation
+│   ├── 42exec.c        # Execution control
 │   ├── 42fsw.c         # Flight software simulation
 │   ├── 42cmd.c         # Command handling
-│   ├── 42ipc.c         # Inter-process communication (sockets)
+│   ├── 42ipc.c         # Inter-process communication dispatch
+│   ├── 42commlink.c    # Communication link (range/range-rate)
 │   ├── 42report.c      # Output reporting
 │   ├── 42actuators.c   # Actuator models
 │   ├── 42sensors.c     # Sensor models
 │   ├── 42ephem.c       # Ephemeris calculations
 │   ├── 42environs.c    # Environmental models
 │   ├── 42perturb.c     # Perturbation forces
-│   └── AcApp.c         # Attitude control application
+│   ├── 42joints.c      # Joint dynamics
+│   ├── 42jitter.c      # Jitter modeling
+│   ├── 42gl.c          # OpenGL rendering
+│   ├── 42glfw.c        # GLFW window management
+│   ├── 42glut.c        # GLUT window management
+│   ├── 42gpgpu.c       # GPU computing
+│   ├── 42nos3.c        # NOS3 interface
+│   ├── 42optics.c      # Optics modeling
+│   ├── AcApp.c         # Standalone attitude control application
+│   └── AutoCode/       # Auto-generated IPC marshalling
+│       ├── TxRxIPC.c   # Socket read/write (generated from headers)
+│       ├── AcIPC.c     # Attitude control IPC
+│       ├── ScIPC.c     # Spacecraft binary IPC (standalone mode)
+│       ├── WriteAcToCsv.c
+│       └── WriteScToCsv.c
 ├── Include/             # Header files
-│   ├── 42.h            # Main definitions
-│   ├── 42types.h       # Type definitions
-│   ├── AcTypes.h       # Attitude control types
-│   ├── fswkit.h        # Flight software kit
-│   └── mathkit.h       # Math utilities
+│   ├── 42.h            # Main definitions and externs
+│   ├── 42defines.h     # Constants and defines
+│   ├── 42types.h       # Type definitions (SCType, WorldType, etc.)
+│   ├── 42gl.h          # OpenGL definitions
+│   ├── 42glfw.h        # GLFW definitions
+│   ├── 42glut.h        # GLUT definitions
+│   ├── Ac.h            # AcFsw() prototype
+│   └── AcTypes.h       # Attitude control types (AcType)
 ├── Kit/                 # Toolkit libraries
 │   ├── Source/
 │   │   ├── mathkit.c   # Vector/matrix math
 │   │   ├── dcmkit.c    # Direction cosine matrices
-│   │   ├── orbkit.c    # Orbital mechanics
+│   │   ├── orbkit.c    # Orbital mechanics (OrbitType defined here)
 │   │   ├── envkit.c    # Environment models
-│   │   ├── fswkit.c    # Flight software utilities
-│   │   ├── iokit.c     # I/O utilities
-│   │   ├── geomkit.c   # Geometry utilities
-│   │   ├── glkit.c     # OpenGL utilities
+│   │   ├── fswkit.c    # Flight software utilities (Kalman filter)
+│   │   ├── iokit.c     # I/O and socket utilities
+│   │   ├── meshkit.c   # Mesh/geometry utilities
+│   │   ├── sphkit.c    # Spherical harmonics
+│   │   ├── sigkit.c    # Signal processing
+│   │   ├── texkit.c    # Texture utilities
 │   │   └── timekit.c   # Time utilities
 │   └── Include/
+│       ├── orbkit.h    # OrbitType struct definition
+│       ├── fswkit.h    # Flight software kit
+│       ├── mathkit.h   # Math utilities
+│       ├── envkit.h    # Environment models
+│       ├── iokit.h     # I/O utilities
+│       └── timekit.h   # Time utilities
 ├── InOut/               # Default input/output files
 │   ├── Inp_Sim.txt     # Top-level simulation config
 │   ├── Inp_Cmd.txt     # Command input
@@ -806,128 +834,129 @@ Propagate DefaultProp(Sat) {Sat.ElapsedDays = 1};
 │   ├── Orb_*.txt       # Orbit definitions
 │   ├── SC_*.txt        # Spacecraft definitions
 │   └── Inp_*.txt       # Various input files
+├── MetaCode/            # Code generation scripts (Julia/Python)
+│   ├── HeadersToJson.jl # Parses C headers → JSON dictionaries
+│   └── JsonToTxRxIPC.jl # Generates TxRxIPC.c from JSON
 ├── Demo/                # Example scenarios
+├── Development/         # Development utilities
 ├── Model/               # 3D models for visualization
 ├── World/               # World/terrain models
 ├── Docs/                # Documentation
-│   ├── 42 Overview.pdf
-│   ├── Nomenclature.pdf
-│   ├── FSW Models.pdf
-│   └── Flight Regimes.pdf
 ├── MonteCarlo/          # Monte Carlo tools
 ├── Standalone/          # Standalone utilities
 ├── Utilities/           # Helper scripts
+├── Tx/                  # Transmitter models
+├── Rx/                  # Receiver models
+├── LunarComm/           # Lunar communication models
+├── containers/          # Container definitions
 └── Makefile             # Build configuration
 ```
 
 #### Key Data Structures
 
 ```c
-/* From AcTypes.h - Spacecraft structure */
+/* From 42types.h - Spacecraft structure */
 struct SCType {
-    /* Identification */
+    /* Outputs */
+    double qn[4];           /* Attitude quaternion of Body 0 in N */
+    double wn[3];           /* Angular rates of Body 0 in N (rad/sec) */
+    double PosR[3];         /* Position of cm wrt Reference Orbit (m), in N */
+    double VelR[3];         /* Velocity of cm wrt R (m/s), in N */
+    double PosN[3];         /* Position of cm wrt origin of N (m), in N */
+    double VelN[3];         /* Velocity of cm wrt origin of N (m/sec), in N */
+    double svb[3];          /* Sun-pointing unit vector in Body 0 */
+    double bvb[3];          /* Mag field (Tesla) in Body 0 */
+    double Hvb[3];          /* Total SC angular momentum (Nms) in Body 0 */
+
+    /* Internal Variables */
     long ID;
+    long Exists;
     char Label[40];
+    long DynMethod;
+    long OrbDOF;
+    long RefOrb;            /* Index into Orb[] array */
+    long FswTag;
+    double FswSampleTime;
+
+    /* Counts */
+    long Nb, Ng, Nw, Nmtb, Nthr;
+    long Ngyro, Nmag, Ncss, Nfss, Nst, Ngps, Nacc;
 
     /* Mass properties */
-    double mass;
-    double cm[3];           /* Center of mass */
-    double I[3][3];         /* Inertia tensor */
+    double mass, cm[3], I[3][3];
 
-    /* State vectors */
-    double PosN[3];         /* Position in N frame (m) */
-    double VelN[3];         /* Velocity in N frame (m/s) */
-    double PosR[3];         /* Position in rotating frame */
-    double VelR[3];         /* Velocity in rotating frame */
-
-    /* Attitude */
-    double qbn[4];          /* Quaternion body-to-inertial */
-    double wbn[3];          /* Angular velocity (rad/s) */
-    double CBN[3][3];       /* DCM body-to-inertial */
-
-    /* Orbit */
-    struct OrbitType Orb;
-
-    /* Bodies (multi-body dynamics) */
-    long Nb;                /* Number of bodies */
-    struct BodyType *B;     /* Body array */
-
-    /* Joints */
-    long Ng;                /* Number of joints */
-    struct JointType *G;    /* Joint array */
-
-    /* Wheels (reaction wheels) */
-    long Nw;                /* Number of wheels */
-    struct WhlType *Whl;    /* Wheel array */
-
-    /* Magnetic torquers */
-    long Nmtb;              /* Number of MTBs */
-    struct MTBType *MTB;    /* MTB array */
-
-    /* Thrusters */
-    long Nthr;              /* Number of thrusters */
-    struct ThrType *Thr;    /* Thruster array */
-
-    /* CMGs */
-    long Ncmg;              /* Number of CMGs */
-    struct CMGType *CMG;    /* CMG array */
-
-    /* Gyroscopes */
-    long Ngyro;             /* Number of gyros */
-    struct GyroType *Gyro;  /* Gyro array */
-
-    /* Magnetometers */
-    long Nmag;              /* Number of magnetometers */
-    struct MagnetometerType *MAG;
-
-    /* Sun sensors */
-    long Ncss;              /* Coarse sun sensors */
-    struct CSSType *CSS;
-    long Nfss;              /* Fine sun sensors */
-    struct FSSType *FSS;
-
-    /* Star trackers */
-    long Nst;
-    struct StarTrackerType *ST;
-
-    /* GPS receivers */
-    long Ngps;
-    struct GPSType *GPS;
-
-    /* Accelerometers */
-    long Nacc;
-    struct AccelType *Accel;
+    /* Derived state */
+    double CLN[3][3], CEN[3][3], wln[3];
+    double PosH[3], VelH[3];
+    double PosEH[3], VelEH[3];
+    double FrcN[3], AccN[3];
+    double svn[3], bvn[3], Hvn[3];
+    long Eclipse;
+    double AtmoDensity, DragCoef;
 
     /* Flight software */
-    struct FSWType FSW;
+    struct AcType AC;       /* Embedded flight software struct */
+
+    /* Dynamic components */
+    struct BodyType *B;     /* Body array */
+    struct JointType *G;    /* Joint array */
+    struct WhlType *Whl;    /* Wheel array */
+    struct MTBType *MTB;    /* MTB array */
+    struct ThrType *Thr;    /* Thruster array */
+    struct GyroType *Gyro;
+    struct MagnetometerType *MAG;
+    struct CssType *CSS;
+    struct FssType *FSS;
+    struct StarTrackerType *ST;
+    struct GpsType *GPS;
+    struct AccelType *Accel;
+    /* ... additional members ... */
 };
 
-/* Orbit structure */
+/* From Kit/Include/orbkit.h - Orbit structure */
 struct OrbitType {
-    long Regime;            /* TWO_BODY, THREE_BODY, etc. */
-    long Type;              /* CENTRAL, FLIGHT, EARTHMOON, etc. */
+    long Tag;
+    long Exists;
+    double Epoch;           /* Sec since J2000 */
+    long Regime;            /* ORB_ZERO, ORB_FLIGHT, ORB_CENTRAL, ORB_THREE_BODY */
+    long World;
+    long Region;
 
-    /* Keplerian elements */
+    /* Three-Body Orbit Description */
+    long Sys;               /* e.g. SUNEARTH, EARTHMOON */
+    long LP;                /* Lagrange Point [0-4] */
+    long Body1, Body2;
+    double mu1, mu2;
+    long LagDOF;
+    double Ax, Bx, Cx, Dx; /* Modal parameters (m) */
+    double Ay, By, Cy, Dy;
+    double Az, Bz;
+
+    /* Central Orbit Description */
+    double mu;              /* Gravitational parameter */
     double SMA;             /* Semi-major axis (m) */
     double ecc;             /* Eccentricity */
     double inc;             /* Inclination (rad) */
     double RAAN;            /* Right ascension (rad) */
     double ArgP;            /* Argument of periapsis (rad) */
-    double anom;            /* True anomaly (rad) */
-    double MeanAnom;        /* Mean anomaly (rad) */
-    double tp;              /* Time of periapsis passage */
-
-    /* Orbital period and mean motion */
+    double tp;              /* Time of periapsis passage (sec since J2000) */
+    double alpha;           /* 1/SMA */
+    double SLR;             /* Semilatus rectum (m) */
+    double rmin;            /* Periapsis radius (m) */
     double Period;
     double MeanMotion;
+    long J2DriftEnabled;
 
     /* State vectors */
-    double PosN[3];
-    double VelN[3];
+    double PosN[3];         /* Position in N (m) */
+    double VelN[3];         /* Velocity in N (m/sec) */
 
-    /* Central body */
-    double mu;              /* Gravitational parameter */
-    struct WorldType *World;
+    /* Internal Variables */
+    double MeanAnom;
+    double anom;            /* True Anomaly (rad) */
+    double CLN[3][3];       /* Frame transformation */
+    double wln[3];          /* Angular velocity in N */
+    char FileName[120];
 };
 
 /* Sensor noise model */
@@ -956,76 +985,96 @@ struct WhlType {
 };
 ```
 
-#### Input File Format (Inp_SC.txt)
+#### Input File Format
 
+Spacecraft are configured via `SC_*.txt` files (e.g. `SC_Simple.txt`), referenced from the top-level `Inp_Sim.txt`. The format uses a value-first convention where data values appear at the start of each line, followed by a `!` delimiter and a description comment. Orbits are defined in separate `Orb_*.txt` files.
+
+**Inp_Sim.txt** (top-level, references orbits and spacecraft):
 ```
-***************  Spacecraft: SC_Name  ****************
-Orbit Defined in: "InOut"
-Orbit File: "Orb_ISS.txt"
-Enable Passive Attitude Control: FALSE
-Enable Active Attitude Control: TRUE
-Drag Coefficient: 2.2
-SRP Coefficient: 1.8
-Drag Reference Area: 15.0
-SRP Reference Area: 1.0
-
-************************  Body 0  **********************
-Mass: 850.0
-Moments of Inertia (kg-m^2): 500.0 400.0 300.0
-Products of Inertia (kg-m^2): 0.0 0.0 0.0
-Location of Center of Mass (m): 0.0 0.0 0.0
-Constant Embedded Momentum (Nms): 0.0 0.0 0.0
-Geometry Input File Name: "SC_ISS.obj"
-
-***********************  Wheel 0  **********************
-Initial Momentum (Nms): 0.0
-Max Momentum (Nms): 50.0
-Max Torque (Nm): 0.2
-Rotor Inertia (kg-m^2): 0.012
-Spin Axis in Body Frame: 1.0 0.0 0.0
-
-***********************  MTB 0  ************************
-Max Dipole Moment (A-m^2): 100.0
-Dipole Axis in Body Frame: 1.0 0.0 0.0
-
-**********************  Gyro 0  ************************
-Sample Time (sec): 0.1
-Axis in Body Frame: 1.0 0.0 0.0
-Max Rate (deg/sec): 100.0
-Scale Factor Error (ppm): 100.0
-Quantization (arcsec): 0.1
-Angle Random Walk (deg/rt-hr): 0.07
-Bias Stability (deg/hr): 1.0
-Angle Noise (arcsec): 1.0
-Rate Noise (arcsec/sec): 0.1
+1                                         !  Number of Reference Orbits
+TRUE  Orb_LEO.txt                         !  Input file name for Orb 0
+1                                         !  Number of Spacecraft
+TRUE  0  SC_Simple.txt                    !  Existence, RefOrb, Input file for SC 0
 ```
+
+**Orb_LEO.txt** (orbit definition):
+```
+CENTRAL                                   !  Orbit Regime (ZERO, FLIGHT, CENTRAL, THREE_BODY)
+EARTH                                     !  World
+TRUE                                      !  J2 Secular Drift Enabled
+KEP                                       !  Input method (KEP, RV, FILE)
+7000.0                                    !  Semi-Major Axis (km)
+0.001                                     !  Eccentricity
+98.0                                      !  Inclination (deg)
+0.0                                       !  RAAN (deg)
+0.0                                       !  Argument of Periapsis (deg)
+0.0                                       !  True Anomaly (deg)
+```
+
+**SC_Simple.txt** (spacecraft definition, abbreviated):
+```
+Description                               !  Description
+Simple                                    !  Label
+NONE                                      !  Sprite File Name
+FSW_ID                                    !  FSW Identifier
+0.2                                       !  FSW Sample Time (sec)
+COWELL                                    !  Orbit Prop (FIXED, EULER_HILL, ENCKE, COWELL)
+0.0  0.0  0.0                            !  Position wrt Formation (m)
+0.0  0.0  0.0                            !  Velocity wrt Formation (m/s)
+...
+STEADY                                    !  Solver (STEADY, ORDER_N)
+FALSE                                     !  Constrain Forces and Torques to Rigid-Body Solution
+FALSE                                     !  Flex Active
+2.2                                       !  Drag Coefficient
+************************  Body 0  ***********************
+100.0                                     !  Mass (kg)
+100.0  50.0  60.0                         !  Moments of Inertia (kg-m^2)
+0.0  0.0  0.0                            !  Products of Inertia (kg-m^2)
+0.0  0.0  0.0                            !  Location of Center of Mass (m)
+0.0  0.0  0.0                            !  Constant Embedded Momentum (Nms)
+...
+***********************  Wheel 0  ***********************
+0.0                                       !  Initial Momentum (Nms)
+50.0                                      !  Max Momentum (Nms)
+0.2                                       !  Max Torque (Nm)
+0.012                                     !  Rotor Inertia (kg-m^2)
+1.0  0.0  0.0                            !  Spin Axis in Body Frame
+...
+```
+
+Note: The `!` delimiter separates values from descriptions. All sensor/actuator sections follow a similar pattern with hardware-specific parameters (noise, mounting axes, sample times, etc.).
 
 #### Socket IPC for Hardware-in-the-Loop
 
+42's IPC system has a layered architecture with auto-generated marshalling code:
+
+**Layer 1 - Configuration** (`Inp_IPC.txt`): Defines socket connections with mode (`OFF`, `TX`, `RX`, `TXRX`, `WRITEFILE`, `READFILE`), role (`SERVER`, `CLIENT`), host/port, blocking behavior, and prefix-based data filtering (e.g. `"SC"`, `"SC[0].AC"`).
+
+**Layer 2 - Dispatch** (`42ipc.c`): Routes to the appropriate read/write function based on mode.
+
+**Layer 3 - Auto-generated marshalling** (`Source/AutoCode/TxRxIPC.c`): Generated by Julia scripts in `MetaCode/` that parse header file markup tags (`[~>~]` = transmit, `[~<~]` = receive, `[~=~]` = bidirectional). Data is serialized as human-readable text with prefix-based filtering:
+
 ```c
-/* From 42ipc.c - External interface */
-void InitSocketServer(struct IpcType *I) {
-    /* Create TCP socket server for HIL testing */
-    I->Socket = socket(AF_INET, SOCK_STREAM, 0);
-    bind(I->Socket, ...);
-    listen(I->Socket, 5);
-}
+/* Auto-generated WriteToSocket serializes state as text lines */
+sprintf(line, "SC[%ld].qn = [%18.12le %18.12le %18.12le %18.12le]\n",
+    Isc, SC[Isc].qn[0], SC[Isc].qn[1], SC[Isc].qn[2], SC[Isc].qn[3]);
+/* Lines filtered by prefix via strncmp before transmission */
 
-void SendToSocket(struct IpcType *I, struct SCType *S) {
-    /* Send spacecraft state to external controller */
-    sprintf(msg, "%lf %lf %lf %lf %lf %lf %lf ...",
-        S->qbn[0], S->qbn[1], S->qbn[2], S->qbn[3],
-        S->wbn[0], S->wbn[1], S->wbn[2], ...);
-    send(I->Socket, msg, strlen(msg), 0);
-}
-
-void RecvFromSocket(struct IpcType *I, struct SCType *S) {
-    /* Receive actuator commands from external controller */
-    recv(I->Socket, msg, sizeof(msg), 0);
-    sscanf(msg, "%lf %lf %lf ...",
-        &S->Whl[0].Trq, &S->Whl[1].Trq, &S->Whl[2].Trq, ...);
-}
+/* ReadFromSocket parses received text with sscanf */
+/* Updates SC attitude, rates, wheel/body/gimbal states */
+/* Detects [ENDMSG] to finalize each exchange */
 ```
+
+**Layer 4 - Standalone AC binary IPC** (`Source/AutoCode/ScIPC.c`): For the standalone `AcApp` mode, uses binary `memcpy` packing for efficiency:
+
+```c
+/* WriteAcInToSocket packs sensor data into buffer */
+memcpy(&buf[offset], SC[Isc].Gyro[i].Rate, sizeof(double));
+/* ReadAcOutFromSocket unpacks actuator commands */
+memcpy(&SC[Isc].Whl[i].Trq, &buf[offset], sizeof(double));
+```
+
+Socket utilities (`InitSocketServer`, `InitSocketClient`) reside in `Kit/Source/iokit.c`.
 
 ---
 
@@ -1141,7 +1190,7 @@ graph TB
         end
 
         subgraph Environment["Environment Models"]
-            EnvModels["🌍 Gravity 18x18<br/>💨 Atmosphere JR/Exp<br/>🧲 Magnetic Field IGRF<br/>🌙 Third Body<br/>☀️ Solar Radiation<br/>🌑 Eclipse"]
+            EnvModels["🌍 Gravity 18x18<br/>💨 Atmosphere NRLMSISE-00<br/>🧲 Magnetic Field IGRF<br/>🌙 Third Body<br/>☀️ Solar Radiation<br/>🌑 Eclipse"]
         end
 
         subgraph AttitudeDynamics["Attitude Dynamics"]
