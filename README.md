@@ -4,16 +4,18 @@ This project aims to unify capabilities from major open-source space flight dyna
 - **OreKit** - Java-based low-level library for space mechanics
 - **GMAT** - NASA's General Mission Analysis Tool
 - **42** - NASA Goddard's spacecraft attitude control simulation
+- **Nyx** - Rust-based high-fidelity astrodynamics toolkit
 
 ---
 
 ## Table of Contents
 
-1. [Feature Comparison](#feature-comparison-orekit-vs-gmat-vs-42)
+1. [Feature Comparison](#feature-comparison-orekit-vs-gmat-vs-42-vs-nyx)
 2. [Source Code Analysis](#source-code-analysis)
    - [OreKit Architecture](#orekit-architecture)
    - [GMAT Architecture](#gmat-architecture)
    - [42 Architecture](#42-architecture)
+   - [Nyx Architecture](#nyx-architecture)
 3. [Architecture Diagrams](#architecture-diagrams)
 4. [Unified Architecture Proposal](#unified-architecture-proposal)
 5. [Variable Name Mapping](#variable-name-mapping)
@@ -22,241 +24,255 @@ This project aims to unify capabilities from major open-source space flight dyna
    - [OreKit (Java → WebAssembly)](#orekit-java--webassembly)
    - [GMAT (C++ → WebAssembly)](#gmat-c--webassembly)
    - [42 (C → WebAssembly)](#42-c--webassembly)
+   - [Nyx (Rust → WebAssembly)](#nyx-rust--webassembly)
 8. [References](#references)
 
 ---
 
-## Feature Comparison: OreKit vs GMAT vs 42
+## Feature Comparison: OreKit vs GMAT vs 42 vs Nyx
 
 ### 1. Propagation
 
-| Feature | OreKit | GMAT | 42 |
-|---------|--------|------|-----|
-| **Numerical Integrators** | Runge-Kutta (various), Adams-Bashforth, Adams-Moulton, Dormand-Prince | Runge-Kutta, PrinceDormand45/78, Adams-Bashforth-Moulton, Bulirsch-Stoer | 4th-order Runge-Kutta |
-| **Analytical Propagators** | Kepler, Brouwer-Lyddane, Eckstein-Hechler | Keplerian (two-body) | Two-body, Three-body |
-| **SGP4/SDP4 (TLE)** | ✅ Full support + TLE generation | ✅ TLE propagation (R2022a+) | ✅ Parses TLEs, converts to other formats |
-| **DSST (Semi-analytical)** | ✅ Draper Semi-analytical Satellite Theory | ❌ | ❌ |
-| **Ephemeris Propagation** | ✅ SP3, SPICE, tabulated | ✅ SPICE, Code500 ephemeris | ✅ Meeus algorithms, DE430/DE440 (SPICE as local text files) |
-| **Multi-spacecraft** | ✅ Parallel propagation | ✅ Coupled dynamics, synchronized epochs | ✅ Concurrent multi-spacecraft |
-| **CR3BP/Libration Points** | ✅ Halo orbit propagation | ✅ Libration point missions | ✅ Three-body orbits |
-| **Flexible Body Dynamics** | ❌ | ❌ | ✅ Rigid and flexible bodies |
-| **Multi-body Dynamics** | ❌ | ❌ | ✅ Tree topology joints |
+| Feature | OreKit | GMAT | 42 | Nyx |
+|---------|--------|------|-----|-----|
+| **Numerical Integrators** | Runge-Kutta (various), Adams-Bashforth, Adams-Moulton, Dormand-Prince | Runge-Kutta, PrinceDormand45/78, Adams-Bashforth-Moulton, Bulirsch-Stoer | 4th-order Runge-Kutta | Runge-Kutta (RK4, RK89), Dormand-Prince 7(8) |
+| **Analytical Propagators** | Kepler, Brouwer-Lyddane, Eckstein-Hechler | Keplerian (two-body) | Two-body, Three-body | Two-body (Keplerian) |
+| **SGP4/SDP4 (TLE)** | ✅ Full support + TLE generation | ✅ TLE propagation (R2022a+) | ✅ Parses TLEs, converts to other formats | ❌ |
+| **DSST (Semi-analytical)** | ✅ Draper Semi-analytical Satellite Theory | ❌ | ❌ | ❌ |
+| **Ephemeris Propagation** | ✅ SP3, SPICE, tabulated | ✅ SPICE, Code500 ephemeris | ✅ Meeus algorithms, DE430/DE440 (SPICE as local text files) | ✅ ANISE (SPICE replacement), DE440 |
+| **Multi-spacecraft** | ✅ Parallel propagation | ✅ Coupled dynamics, synchronized epochs | ✅ Concurrent multi-spacecraft | ✅ Monte Carlo (100+ spacecraft) |
+| **CR3BP/Libration Points** | ✅ Halo orbit propagation | ✅ Libration point missions | ✅ Three-body orbits | ✅ Multi-body (Earth-Moon-Sun-Jupiter) |
+| **Flexible Body Dynamics** | ❌ | ❌ | ✅ Rigid and flexible bodies | ❌ |
+| **Multi-body Dynamics** | ❌ | ❌ | ✅ Tree topology joints | ❌ |
 
 ### 2. Force Models
 
-| Feature | OreKit | GMAT | 42 |
-|---------|--------|------|-----|
-| **Gravity (Point Mass)** | ✅ | ✅ | ✅ |
-| **Gravity (Spherical Harmonics)** | ✅ ICGEM, EGM, SHA formats | ✅ COF, GRV, GFC, TAB formats | ✅ EGM96 (Earth), GMM-2B (Mars), GLGM2 (Luna) up to 18x18 |
-| **Max Gravity Degree/Order** | Configurable (70x70+) | Configurable (70x70+) | 18x18 |
-| **Third Body** | ✅ Sun, Moon, planets | ✅ Sun, Moon, planets | ✅ All planets and major moons |
-| **Atmospheric Drag** | ✅ DTM2000, JB2006/2008, NRLMSISE-00, Harris-Priester | ✅ Jacchia-Roberts, MSISE90, JB2008 | ✅ NRLMSISE-00 (Earth), Exponential (Mars) |
-| **Solar Radiation Pressure** | ✅ With eclipse modeling | ✅ Basic + N-plate SRP (R2022a+) | ✅ |
-| **Solid Tides** | ✅ | ✅ | ❌ |
-| **Ocean Tides** | ✅ | ✅ | ❌ |
-| **Relativistic Corrections** | ✅ General relativistic effects | ✅ | ❌ |
-| **Albedo/IR Radiation** | ✅ Earth albedo and infrared | ❌ | ❌ |
-| **Gravity Gradient Torque** | ✅ | ✅ | ✅ |
-| **Aerodynamic Torque** | ❌ | ❌ | ✅ |
-| **Magnetic Field** | ✅ WMM, IGRF | ❌ | ✅ Planetary magnetic field models |
-| **Contact Forces** | ❌ | ❌ | ✅ Spacecraft-surface contact |
+| Feature | OreKit | GMAT | 42 | Nyx |
+|---------|--------|------|-----|-----|
+| **Gravity (Point Mass)** | ✅ | ✅ | ✅ | ✅ |
+| **Gravity (Spherical Harmonics)** | ✅ ICGEM, EGM, SHA formats | ✅ COF, GRV, GFC, TAB formats | ✅ EGM96 (Earth), GMM-2B (Mars), GLGM2 (Luna) up to 18x18 | ✅ JGM2/3, EGM2008, JGGRX GRAIL (SHADR, COF formats) |
+| **Max Gravity Degree/Order** | Configurable (70x70+) | Configurable (70x70+) | 18x18 | Configurable (70x70 demonstrated) |
+| **Third Body** | ✅ Sun, Moon, planets | ✅ Sun, Moon, planets | ✅ All planets and major moons | ✅ Earth, Moon, Sun, Jupiter |
+| **Atmospheric Drag** | ✅ DTM2000, JB2006/2008, NRLMSISE-00, Harris-Priester | ✅ Jacchia-Roberts, MSISE90, JB2008 | ✅ NRLMSISE-00 (Earth), Exponential (Mars) | ✅ 1976 Standard Atmosphere |
+| **Solar Radiation Pressure** | ✅ With eclipse modeling | ✅ Basic + N-plate SRP (R2022a+) | ✅ | ✅ Spherical (cannonball) model |
+| **Solid Tides** | ✅ | ✅ | ❌ | ❌ |
+| **Ocean Tides** | ✅ | ✅ | ❌ | ❌ |
+| **Relativistic Corrections** | ✅ General relativistic effects | ✅ | ❌ | ❌ |
+| **Albedo/IR Radiation** | ✅ Earth albedo and infrared | ❌ | ❌ | ❌ |
+| **Gravity Gradient Torque** | ✅ | ✅ | ✅ | ❌ |
+| **Aerodynamic Torque** | ❌ | ❌ | ✅ | ❌ |
+| **Magnetic Field** | ✅ WMM, IGRF | ❌ | ✅ Planetary magnetic field models | ❌ |
+| **Contact Forces** | ❌ | ❌ | ✅ Spacecraft-surface contact | ❌ |
 
 ### 3. Coordinate Systems & Frames
 
-| Feature | OreKit | GMAT | 42 |
-|---------|--------|------|-----|
-| **Inertial Frames** | EME2000, GCRF, ICRF, MOD, TOD, TEME | MJ2000Eq, MJ2000Ec, ICRF | J2000, Heliocentric |
-| **Earth-Fixed** | ITRF (multiple versions), TIRF | BodyFixed, BodyInertial | Body-fixed for any body |
-| **Local Orbital Frames** | LVLH, VNC, TNW, QSW | VNB, LVLH | LVLH, body frames |
-| **Body-Centered** | Any celestial body | Earth, Moon, Sun, planets | All solar system bodies |
-| **Topocentric** | ✅ Ground station frames | ✅ | ✅ |
-| **Barycentric** | ✅ Solar system barycenter | ✅ | ✅ |
-| **Libration Point Frames** | ✅ L1-L5 for any system | ✅ | ✅ |
-| **User-Defined Frames** | ✅ Hierarchical frame trees | ✅ | ✅ |
+| Feature | OreKit | GMAT | 42 | Nyx |
+|---------|--------|------|-----|-----|
+| **Inertial Frames** | EME2000, GCRF, ICRF, MOD, TOD, TEME | MJ2000Eq, MJ2000Ec, ICRF | J2000, Heliocentric | ECI (via ANISE/SPICE frames) |
+| **Earth-Fixed** | ITRF (multiple versions), TIRF | BodyFixed, BodyInertial | Body-fixed for any body | IAU body-fixed frames |
+| **Local Orbital Frames** | LVLH, VNC, TNW, QSW | VNB, LVLH | LVLH, body frames | VNC, RIC, RCN |
+| **Body-Centered** | Any celestial body | Earth, Moon, Sun, planets | All solar system bodies | Via ANISE ephemeris |
+| **Topocentric** | ✅ Ground station frames | ✅ | ✅ | ✅ Ground stations (geodetic) |
+| **Barycentric** | ✅ Solar system barycenter | ✅ | ✅ | ✅ Via DE440 |
+| **Libration Point Frames** | ✅ L1-L5 for any system | ✅ | ✅ | ❌ |
+| **User-Defined Frames** | ✅ Hierarchical frame trees | ✅ | ✅ | ❌ |
 
 ### 4. Orbit Representation
 
-| Feature | OreKit | GMAT | 42 |
-|---------|--------|------|-----|
-| **Cartesian** | ✅ Position/Velocity | ✅ X, Y, Z, VX, VY, VZ | ✅ |
-| **Keplerian** | ✅ a, e, i, Ω, ω, ν/M/E | ✅ SMA, ECC, INC, RAAN, AOP, TA/MA | ✅ |
-| **Circular** | ✅ For near-circular orbits | ❌ | ❌ |
-| **Equinoctial** | ✅ Singularity-free | ✅ ModifiedEquinoctial | ❌ |
-| **Spherical** | ❌ | ✅ RMAG, RA, DEC, VMAG, AZI, FPA | ❌ |
-| **Two-Line Elements** | ✅ Parse and generate | ✅ Parse and propagate | ✅ Parse and convert |
+| Feature | OreKit | GMAT | 42 | Nyx |
+|---------|--------|------|-----|-----|
+| **Cartesian** | ✅ Position/Velocity | ✅ X, Y, Z, VX, VY, VZ | ✅ | ✅ Internal storage format |
+| **Keplerian** | ✅ a, e, i, Ω, ω, ν/M/E | ✅ SMA, ECC, INC, RAAN, AOP, TA/MA | ✅ | ✅ sma, ecc, inc, raan, aop, ta/ma/ea |
+| **Circular** | ✅ For near-circular orbits | ❌ | ❌ | ❌ |
+| **Equinoctial** | ✅ Singularity-free | ✅ ModifiedEquinoctial | ❌ | ❌ |
+| **Spherical** | ❌ | ✅ RMAG, RA, DEC, VMAG, AZI, FPA | ❌ | ❌ |
+| **Two-Line Elements** | ✅ Parse and generate | ✅ Parse and propagate | ✅ Parse and convert | ❌ |
+| **Geodetic** | ❌ | ❌ | ❌ | ✅ Latitude/Longitude/Altitude |
 
 ### 5. Time Systems
 
-| Feature | OreKit | GMAT | 42 |
-|---------|--------|------|-----|
-| **UTC** | ✅ With leap seconds | ✅ UTCGregorian, UTCModJulian | ✅ |
-| **TAI** | ✅ | ✅ TAIGregorian, TAIModJulian | ✅ AtomicTime |
-| **TT (Terrestrial Time)** | ✅ | ✅ TTGregorian, TTModJulian | ✅ |
-| **TDB (Barycentric)** | ✅ | ✅ TDBGregorian, TDBModJulian | ✅ |
-| **GPS Time** | ✅ | ✅ | ✅ |
-| **UT1** | ✅ | ❌ | ❌ |
-| **Julian Date** | ✅ | ✅ | ✅ |
+| Feature | OreKit | GMAT | 42 | Nyx |
+|---------|--------|------|-----|-----|
+| **UTC** | ✅ With leap seconds | ✅ UTCGregorian, UTCModJulian | ✅ | ✅ With leap seconds (hifitime) |
+| **TAI** | ✅ | ✅ TAIGregorian, TAIModJulian | ✅ AtomicTime | ✅ |
+| **TT (Terrestrial Time)** | ✅ | ✅ TTGregorian, TTModJulian | ✅ | ✅ |
+| **TDB (Barycentric)** | ✅ | ✅ TDBGregorian, TDBModJulian | ✅ | ✅ ESA algorithm |
+| **GPS Time** | ✅ | ✅ | ✅ | ✅ |
+| **UT1** | ✅ | ❌ | ❌ | ❌ |
+| **Julian Date** | ✅ | ✅ | ✅ | ✅ |
+| **Ephemeris Time** | ✅ | ✅ | ❌ | ✅ NAIF algorithm |
+| **Precision** | Microsecond | Millisecond | Microsecond | Nanosecond (integer arithmetic) |
 
 ### 6. Maneuvers
 
-| Feature | OreKit | GMAT | 42 |
-|---------|--------|------|-----|
-| **Impulsive Burns** | ✅ | ✅ ImpulsiveBurn | ✅ |
-| **Finite Burns** | ✅ Continuous thrust | ✅ FiniteBurn with thruster models | ✅ Thruster models |
-| **Low-Thrust** | ✅ | ✅ | ✅ |
-| **Propulsion Modeling** | ✅ User-defined | ✅ Tanks, Thrusters, ISP, thrust curves | ✅ Thrusters with fuel consumption |
-| **Mass Decrement** | ✅ | ✅ | ❌ |
-| **Thrust Direction** | ✅ Any frame | ✅ VNB, Body-fixed, inertial | ✅ Body-fixed |
-| **Maneuver Triggers** | ✅ Event-based | ✅ Command-based | ✅ Flight software control |
+| Feature | OreKit | GMAT | 42 | Nyx |
+|---------|--------|------|-----|-----|
+| **Impulsive Burns** | ✅ | ✅ ImpulsiveBurn | ✅ | ✅ |
+| **Finite Burns** | ✅ Continuous thrust | ✅ FiniteBurn with thruster models | ✅ Thruster models | ✅ VNC/RCN frame guidance |
+| **Low-Thrust** | ✅ | ✅ | ✅ | ✅ Q-Law, Ruggiero guidance laws |
+| **Propulsion Modeling** | ✅ User-defined | ✅ Tanks, Thrusters, ISP, thrust curves | ✅ Thrusters with fuel consumption | ✅ Basic |
+| **Mass Decrement** | ✅ | ✅ | ❌ | ❌ |
+| **Thrust Direction** | ✅ Any frame | ✅ VNB, Body-fixed, inertial | ✅ Body-fixed | ✅ VNC, RCN, anti-velocity |
+| **Maneuver Triggers** | ✅ Event-based | ✅ Command-based | ✅ Flight software control | ❌ |
 
 ### 7. Solvers & Optimization
 
-| Feature | OreKit | GMAT | 42 |
-|---------|--------|------|-----|
-| **Differential Corrector** | ❌ (use external) | ✅ Newton-Raphson, Broyden, Modified Broyden | ❌ |
-| **Batch Least Squares** | ✅ Levenberg-Marquardt, Gauss-Newton | ✅ Batch Estimator | ❌ |
-| **Kalman Filters** | ✅ EKF, UKF, Semi-analytical | ✅ Extended Kalman Filter | ✅ Starter filter (fswkit.c) |
-| **Smoother** | ✅ RTS smoother | ✅ EKF Smoother (R2022a+) | ❌ |
-| **Nonlinear Programming** | ❌ | ✅ VF13ad (SQP), fmincon (MATLAB) | ❌ |
-| **Targeting** | ❌ | ✅ Target/Vary/Achieve commands | ❌ |
-| **Trajectory Optimization** | ✅ Pontryagin/indirect methods | ✅ Optimize/Minimize commands | ❌ |
+| Feature | OreKit | GMAT | 42 | Nyx |
+|---------|--------|------|-----|-----|
+| **Differential Corrector** | ❌ (use external) | ✅ Newton-Raphson, Broyden, Modified Broyden | ❌ | ✅ Newton-Raphson (validated vs GMAT) |
+| **Batch Least Squares** | ✅ Levenberg-Marquardt, Gauss-Newton | ✅ Batch Estimator | ❌ | ❌ |
+| **Kalman Filters** | ✅ EKF, UKF, Semi-analytical | ✅ Extended Kalman Filter | ✅ Starter filter (fswkit.c) | ✅ CKF, EKF |
+| **Smoother** | ✅ RTS smoother | ✅ EKF Smoother (R2022a+) | ❌ | ❌ |
+| **Nonlinear Programming** | ❌ | ✅ VF13ad (SQP), fmincon (MATLAB) | ❌ | ❌ |
+| **Targeting** | ❌ | ✅ Target/Vary/Achieve commands | ❌ | ✅ Orbital element targeting |
+| **Trajectory Optimization** | ✅ Pontryagin/indirect methods | ✅ Optimize/Minimize commands | ❌ | ❌ |
+| **Automatic Differentiation** | ❌ | ❌ | ❌ | ✅ Hyperdual numbers (STM) |
+| **Covariance Propagation** | ✅ | ✅ (R2022a+) | ❌ | ✅ Integration frame and RIC |
 
 ### 8. Event Detection
 
-| Feature | OreKit | GMAT | 42 |
-|---------|--------|------|-----|
-| **Eclipse (Umbra/Penumbra)** | ✅ | ✅ EclipseLocator | ✅ |
-| **Ground Station Visibility** | ✅ | ✅ ContactLocator | ✅ |
-| **Apogee/Perigee** | ✅ | ✅ Periapsis/Apoapsis stop conditions | ✅ |
-| **Node Crossings** | ✅ Ascending/Descending | ✅ | ❌ |
-| **Altitude Crossing** | ✅ | ✅ | ❌ |
-| **Inter-satellite LOS** | ✅ | ✅ | ✅ |
-| **Angular Separation** | ✅ | ✅ | ❌ |
-| **Surface Contact** | ❌ | ❌ | ✅ Lander/rover contact |
+| Feature | OreKit | GMAT | 42 | Nyx |
+|---------|--------|------|-----|-----|
+| **Eclipse (Umbra/Penumbra)** | ✅ | ✅ EclipseLocator | ✅ | ✅ With penumbra percentage |
+| **Ground Station Visibility** | ✅ | ✅ ContactLocator | ✅ | ✅ Light-time corrected |
+| **Apogee/Perigee** | ✅ | ✅ Periapsis/Apoapsis stop conditions | ✅ | ✅ Via orbital element tracking |
+| **Node Crossings** | ✅ Ascending/Descending | ✅ | ❌ | ✅ Via orbital element tracking |
+| **Altitude Crossing** | ✅ | ✅ | ❌ | ✅ Via state monitoring |
+| **Inter-satellite LOS** | ✅ | ✅ | ✅ | ❌ |
+| **Angular Separation** | ✅ | ✅ | ❌ | ❌ |
+| **Surface Contact** | ❌ | ❌ | ✅ Lander/rover contact | ❌ |
 
 ### 9. Orbit Determination
 
-| Feature | OreKit | GMAT | 42 |
-|---------|--------|------|-----|
-| **Initial Orbit Determination** | ✅ Gibbs, Herrick-Gibbs, Gooding, Lambert, Gauss, Laplace | ✅ IOD capability (R2022a+) | ❌ |
-| **Range Measurements** | ✅ One-way, two-way, TDRSS | ✅ | ✅ Via 42commlink.c |
-| **Range-Rate (Doppler)** | ✅ | ✅ | ✅ Via 42commlink.c |
-| **Angles (Az/El, RA/Dec)** | ✅ | ✅ | ❌ |
-| **GNSS Measurements** | ✅ Code, carrier phase, ambiguity resolution | ❌ Limited | ✅ GPS receiver model |
-| **TDOA/FDOA** | ✅ | ❌ | ❌ |
-| **Covariance Propagation** | ✅ | ✅ (R2022a+) | ❌ |
+| Feature | OreKit | GMAT | 42 | Nyx |
+|---------|--------|------|-----|-----|
+| **Initial Orbit Determination** | ✅ Gibbs, Herrick-Gibbs, Gooding, Lambert, Gauss, Laplace | ✅ IOD capability (R2022a+) | ❌ | ❌ |
+| **Range Measurements** | ✅ One-way, two-way, TDRSS | ✅ | ✅ Via 42commlink.c | ✅ Two-way, light-time corrected |
+| **Range-Rate (Doppler)** | ✅ | ✅ | ✅ Via 42commlink.c | ✅ |
+| **Angles (Az/El, RA/Dec)** | ✅ | ✅ | ❌ | ❌ |
+| **GNSS Measurements** | ✅ Code, carrier phase, ambiguity resolution | ❌ Limited | ✅ GPS receiver model | ❌ |
+| **TDOA/FDOA** | ✅ | ❌ | ❌ | ❌ |
+| **Covariance Propagation** | ✅ | ✅ (R2022a+) | ❌ | ✅ Via STM (hyperdual) |
+| **Residual Rejection** | ✅ | ✅ | ❌ | ✅ Automatic (4-sigma) |
 
 ### 10. Spacecraft Modeling
 
-| Feature | OreKit | GMAT | 42 |
-|---------|--------|------|-----|
-| **Mass Properties** | ✅ Dry mass, fuel mass | ✅ DryMass, FuelMass | ✅ Mass, inertia tensor |
-| **Drag Properties** | ✅ Cd, drag area | ✅ Cd, DragArea | ✅ Cd, area recomputed per timestep |
-| **SRP Properties** | ✅ Cr, SRP area | ✅ Cr, SRPArea | ✅ SpecFrac/DiffFrac, area recomputed per timestep |
-| **Tanks** | ✅ Basic | ✅ ChemicalTank, ElectricTank | ✅ |
-| **Thrusters** | ✅ Basic | ✅ ChemicalThruster, ElectricThruster | ✅ Multiple thruster types |
-| **Power Systems** | ❌ | ✅ SolarPowerSystem, NuclearPowerSystem | ❌ |
-| **Flexible Bodies** | ❌ | ❌ | ✅ Modal analysis |
-| **Multi-body Joints** | ❌ | ❌ | ✅ Rotational/translational joints |
-| **Formations** | ✅ Walker constellations | ✅ Formation object | ✅ Parent-child, peer-to-peer |
+| Feature | OreKit | GMAT | 42 | Nyx |
+|---------|--------|------|-----|-----|
+| **Mass Properties** | ✅ Dry mass, fuel mass | ✅ DryMass, FuelMass | ✅ Mass, inertia tensor | ✅ Instantaneous mass |
+| **Drag Properties** | ✅ Cd, drag area | ✅ Cd, DragArea | ✅ Cd, area recomputed per timestep | ✅ Cannonball model |
+| **SRP Properties** | ✅ Cr, SRP area | ✅ Cr, SRPArea | ✅ SpecFrac/DiffFrac, area recomputed per timestep | ✅ Cr, area (estimable) |
+| **Tanks** | ✅ Basic | ✅ ChemicalTank, ElectricTank | ✅ | ❌ |
+| **Thrusters** | ✅ Basic | ✅ ChemicalThruster, ElectricThruster | ✅ Multiple thruster types | ✅ Basic |
+| **Power Systems** | ❌ | ✅ SolarPowerSystem, NuclearPowerSystem | ❌ | ❌ |
+| **Flexible Bodies** | ❌ | ❌ | ✅ Modal analysis | ❌ |
+| **Multi-body Joints** | ❌ | ❌ | ✅ Rotational/translational joints | ❌ |
+| **Formations** | ✅ Walker constellations | ✅ Formation object | ✅ Parent-child, peer-to-peer | ✅ Monte Carlo constellations |
 
 ### 11. Attitude
 
-| Feature | OreKit | GMAT | 42 |
-|---------|--------|------|-----|
-| **Attitude Dynamics** | ✅ Kinematic only | ✅ Limited | ✅ Full 6-DOF dynamics |
-| **Attitude Laws** | ✅ Nadir, target tracking, yaw compensation, spin, inertial | ✅ CoordinateSystemFixed, Spinner, NadirPointing | ✅ Multiple pointing modes |
-| **Euler Angles** | ✅ | ✅ All 12 sequences | ✅ All 12 sequences |
-| **Quaternions** | ✅ | ✅ | ✅ |
-| **Direction Cosine Matrix** | ✅ | ✅ | ✅ |
-| **Modified Rodrigues** | ❌ | ✅ | ❌ |
-| **Attitude Control Laws** | ❌ | ❌ | ✅ PID, LQR, custom |
-| **GNSS-Specific Attitudes** | ✅ GPS, GLONASS, Galileo, Beidou | ❌ | ❌ |
+| Feature | OreKit | GMAT | 42 | Nyx |
+|---------|--------|------|-----|-----|
+| **Attitude Dynamics** | ✅ Kinematic only | ✅ Limited | ✅ Full 6-DOF dynamics | ❌ |
+| **Attitude Laws** | ✅ Nadir, target tracking, yaw compensation, spin, inertial | ✅ CoordinateSystemFixed, Spinner, NadirPointing | ✅ Multiple pointing modes | ❌ |
+| **Euler Angles** | ✅ | ✅ All 12 sequences | ✅ All 12 sequences | ❌ |
+| **Quaternions** | ✅ | ✅ | ✅ | ❌ |
+| **Direction Cosine Matrix** | ✅ | ✅ | ✅ | ❌ |
+| **Modified Rodrigues** | ❌ | ✅ | ❌ | ❌ |
+| **Attitude Control Laws** | ❌ | ❌ | ✅ PID, LQR, custom | ❌ |
+| **GNSS-Specific Attitudes** | ✅ GPS, GLONASS, Galileo, Beidou | ❌ | ❌ | ❌ |
 
 ### 12. Sensors & Actuators (GNC Hardware)
 
-| Feature | OreKit | GMAT | 42 |
-|---------|--------|------|-----|
-| **Gyroscopes** | ❌ | ❌ | ✅ With noise models |
-| **Magnetometers** | ❌ | ❌ | ✅ 3-axis |
-| **Sun Sensors** | ❌ | ❌ | ✅ Coarse and fine |
-| **Star Trackers** | ❌ | ❌ | ✅ With noise models |
-| **GPS Receivers** | ✅ Measurement modeling | ❌ | ✅ Position/velocity |
-| **Accelerometers** | ❌ | ❌ | ✅ |
-| **Reaction Wheels** | ❌ | ❌ | ✅ With momentum management |
-| **Magnetic Torquers** | ❌ | ❌ | ✅ |
-| **Control Moment Gyros** | ❌ | ❌ | ✅ |
-| **Thrusters (ACS)** | ✅ | ✅ | ✅ |
+| Feature | OreKit | GMAT | 42 | Nyx |
+|---------|--------|------|-----|-----|
+| **Gyroscopes** | ❌ | ❌ | ✅ With noise models | ❌ |
+| **Magnetometers** | ❌ | ❌ | ✅ 3-axis | ❌ |
+| **Sun Sensors** | ❌ | ❌ | ✅ Coarse and fine | ❌ |
+| **Star Trackers** | ❌ | ❌ | ✅ With noise models | ❌ |
+| **GPS Receivers** | ✅ Measurement modeling | ❌ | ✅ Position/velocity | ❌ |
+| **Accelerometers** | ❌ | ❌ | ✅ | ❌ |
+| **Reaction Wheels** | ❌ | ❌ | ✅ With momentum management | ❌ |
+| **Magnetic Torquers** | ❌ | ❌ | ✅ | ❌ |
+| **Control Moment Gyros** | ❌ | ❌ | ✅ | ❌ |
+| **Thrusters (ACS)** | ✅ | ✅ | ✅ | ❌ |
+| **Ground Station Tracking** | ✅ | ✅ | ❌ | ✅ Range/Doppler (DSN validated) |
 
 ### 13. File Formats
 
-| Feature | OreKit | GMAT | 42 |
-|---------|--------|------|-----|
-| **TLE** | ✅ Read/Write | ✅ Read | ✅ Read |
-| **SP3** | ✅ versions a-d | ❌ | ❌ |
-| **CCSDS OEM** | ✅ | ✅ | ❌ |
-| **CCSDS AEM** | ✅ | ✅ | ❌ |
-| **SPICE SPK** | ✅ DE4xx, INPOP | ✅ | ❌ |
-| **RINEX** | ✅ v2, v3, v4 | ❌ | ❌ |
-| **Plain Text Config** | ❌ | ✅ Script files | ✅ Input files |
-| **Socket IPC** | ❌ | ❌ | ✅ External app interface |
+| Feature | OreKit | GMAT | 42 | Nyx |
+|---------|--------|------|-----|-----|
+| **TLE** | ✅ Read/Write | ✅ Read | ✅ Read | ❌ |
+| **SP3** | ✅ versions a-d | ❌ | ❌ | ❌ |
+| **CCSDS OEM** | ✅ | ✅ | ❌ | ✅ Read/Write |
+| **CCSDS AEM** | ✅ | ✅ | ❌ | ❌ |
+| **CCSDS TDM** | ✅ | ✅ | ❌ | ✅ Read |
+| **SPICE SPK** | ✅ DE4xx, INPOP | ✅ | ❌ | ✅ Via ANISE (SPK, BPC, PCK, FK) |
+| **RINEX** | ✅ v2, v3, v4 | ❌ | ❌ | ❌ |
+| **STK Ephemeris** | ❌ | ❌ | ❌ | ✅ .e files |
+| **Plain Text Config** | ❌ | ✅ Script files | ✅ Input files | ❌ (Rust API) |
+| **Socket IPC** | ❌ | ❌ | ✅ External app interface | ❌ |
 
 ### 14. Visualization & Output
 
-| Feature | OreKit | GMAT | 42 |
-|---------|--------|------|-----|
-| **3D Orbit View** | ❌ (external tools) | ✅ OrbitView with OpenGL | ✅ OpenGL visualization |
-| **Spacecraft 3D Model** | ❌ | ✅ | ✅ Attitude visualization |
-| **Ground Track Plot** | ❌ | ✅ GroundTrackPlot | ✅ Map window |
-| **XY Plots** | ❌ | ✅ XYPlot | ❌ |
-| **Report Files** | ❌ | ✅ ReportFile | ✅ Text output |
-| **Real-time Display** | ❌ | ❌ | ✅ |
+| Feature | OreKit | GMAT | 42 | Nyx |
+|---------|--------|------|-----|-----|
+| **3D Orbit View** | ❌ (external tools) | ✅ OrbitView with OpenGL | ✅ OpenGL visualization | ❌ (external tools) |
+| **Spacecraft 3D Model** | ❌ | ✅ | ✅ Attitude visualization | ❌ |
+| **Ground Track Plot** | ❌ | ✅ GroundTrackPlot | ✅ Map window | ❌ |
+| **XY Plots** | ❌ | ✅ XYPlot | ❌ | ❌ (Python plotting) |
+| **Report Files** | ❌ | ✅ ReportFile | ✅ Text output | ✅ CCSDS OEM export |
+| **Real-time Display** | ❌ | ❌ | ✅ | ❌ |
 
 ### 15. Scripting & Integration
 
-| Feature | OreKit | GMAT | 42 |
-|---------|--------|------|-----|
-| **Native Language** | Java | C++ | C |
-| **Script Interface** | ❌ (API only) | ✅ MATLAB-like script language | ✅ Text input files |
-| **GUI** | ❌ | ✅ Full GUI | ✅ OpenGL visualization |
-| **Python Bindings** | ✅ via JCC or Orekit-Python wrapper | ✅ via SWIG (experimental) | ❌ |
-| **MATLAB Integration** | ❌ | ✅ Native MATLAB function calls | ✅ MATLAB support |
-| **Socket IPC** | ❌ | ❌ | ✅ Hardware-in-the-loop |
-| **Julia Support** | ❌ | ❌ | ✅ |
+| Feature | OreKit | GMAT | 42 | Nyx |
+|---------|--------|------|-----|-----|
+| **Native Language** | Java | C++ | C | Rust |
+| **Script Interface** | ❌ (API only) | ✅ MATLAB-like script language | ✅ Text input files | ❌ (API only) |
+| **GUI** | ❌ | ✅ Full GUI | ✅ OpenGL visualization | ❌ |
+| **Python Bindings** | ✅ via JCC or Orekit-Python wrapper | ✅ via SWIG (experimental) | ❌ | ✅ Via PyO3 (nyx-space on PyPI) |
+| **MATLAB Integration** | ❌ | ✅ Native MATLAB function calls | ✅ MATLAB support | ❌ |
+| **Socket IPC** | ❌ | ❌ | ✅ Hardware-in-the-loop | ❌ |
+| **Julia Support** | ❌ | ❌ | ✅ | ❌ |
+| **Crate/Package** | Maven Central | N/A | N/A | crates.io (nyx-space) |
 
 ### 16. Special Capabilities
 
-| Feature | OreKit | GMAT | 42 |
-|---------|--------|------|-----|
-| **Collision Probability** | ✅ Multiple methods (Chan, Alfriend, Alfano, Patera) | ❌ | ❌ |
-| **GNSS Multi-Constellation** | ✅ GPS, GLONASS, Galileo, Beidou, NavIC, QZSS | ❌ | ❌ |
-| **Dilution of Precision** | ✅ GDOP, PDOP, TDOP | ❌ | ❌ |
-| **Mission Sequence** | ❌ | ✅ Full mission scripting with control flow | ❌ |
-| **Targeting Loops** | ❌ | ✅ Target/Vary/Achieve | ❌ |
-| **Proximity Operations** | ❌ | ✅ | ✅ Rendezvous, servicing |
-| **Formation Flying** | ✅ | ✅ | ✅ Precision formation |
-| **Lander/Rover Ops** | ❌ | ❌ | ✅ Surface contact dynamics |
-| **Flight Software Testing** | ❌ | ❌ | ✅ GNC algorithm validation |
-| **Hardware-in-the-Loop** | ❌ | ❌ | ✅ Socket IPC |
+| Feature | OreKit | GMAT | 42 | Nyx |
+|---------|--------|------|-----|-----|
+| **Collision Probability** | ✅ Multiple methods (Chan, Alfriend, Alfano, Patera) | ❌ | ❌ | ❌ |
+| **GNSS Multi-Constellation** | ✅ GPS, GLONASS, Galileo, Beidou, NavIC, QZSS | ❌ | ❌ | ❌ |
+| **Dilution of Precision** | ✅ GDOP, PDOP, TDOP | ❌ | ❌ | ❌ |
+| **Mission Sequence** | ❌ | ✅ Full mission scripting with control flow | ❌ | ❌ |
+| **Targeting Loops** | ❌ | ✅ Target/Vary/Achieve | ❌ | ✅ Differential corrector |
+| **Proximity Operations** | ❌ | ✅ | ✅ Rendezvous, servicing | ❌ |
+| **Formation Flying** | ✅ | ✅ | ✅ Precision formation | ✅ Monte Carlo constellation |
+| **Lander/Rover Ops** | ❌ | ❌ | ✅ Surface contact dynamics | ❌ |
+| **Flight Software Testing** | ❌ | ❌ | ✅ GNC algorithm validation | ❌ |
+| **Hardware-in-the-Loop** | ❌ | ❌ | ✅ Socket IPC | ❌ |
+| **Monte Carlo Analysis** | ❌ | ❌ | ❌ | ✅ High-performance (5000+ runs) |
+| **Lunar Missions** | ✅ | ✅ | ✅ | ✅ Blue Ghost, CAPSTONE validated |
 
 ---
 
 ## Summary Comparison
 
-| Aspect | OreKit | GMAT | 42 |
-|--------|--------|------|-----|
-| **Primary Purpose** | Orbit determination, GNSS, precision ephemeris | Mission design, trajectory optimization | Attitude control system design & test |
-| **Architecture** | Low-level library (Java) | Complete application (C++ with GUI/Script) | Simulation framework (C) |
-| **Best For** | Library integration, OD, GNSS processing | Mission planning, visualization, analysis | GNC design, ADCS validation, HIL testing |
-| **Propagation** | Many analytical options, DSST | Multi-spacecraft synchronization | Multi-body dynamics |
-| **Force Models** | Most complete (albedo, tides, etc.) | Good coverage, simpler config | Attitude-relevant forces |
-| **Attitude** | Kinematic only | Basic modeling | Full 6-DOF dynamics with sensors/actuators |
-| **Sensors/Actuators** | None | None | Comprehensive GNC hardware models |
-| **Estimation** | Superior GNSS support, IOD | Integrated targeting | Starter Kalman filter (fswkit.c) |
-| **Solvers** | External optimization | Built-in DC, NLP, targeting | None |
-| **Visualization** | None (external) | Integrated 3D/2D plotting | Real-time 3D attitude display |
-| **Learning Curve** | Steeper (API-based) | Moderate (GUI + script) | Moderate (config files) |
-| **Use Case** | Flight dynamics, navigation | Mission analysis | ADCS development |
+| Aspect | OreKit | GMAT | 42 | Nyx |
+|--------|--------|------|-----|-----|
+| **Primary Purpose** | Orbit determination, GNSS, precision ephemeris | Mission design, trajectory optimization | Attitude control system design & test | High-fidelity orbit propagation & OD |
+| **Architecture** | Low-level library (Java) | Complete application (C++ with GUI/Script) | Simulation framework (C) | High-performance library (Rust) |
+| **Best For** | Library integration, OD, GNSS processing | Mission planning, visualization, analysis | GNC design, ADCS validation, HIL testing | Monte Carlo, OD, cislunar missions |
+| **Propagation** | Many analytical options, DSST | Multi-spacecraft synchronization | Multi-body dynamics | High-perf numerical, Monte Carlo |
+| **Force Models** | Most complete (albedo, tides, etc.) | Good coverage, simpler config | Attitude-relevant forces | Harmonics, SRP, basic drag |
+| **Attitude** | Kinematic only | Basic modeling | Full 6-DOF dynamics with sensors/actuators | None |
+| **Sensors/Actuators** | None | None | Comprehensive GNC hardware models | Ground station tracking only |
+| **Estimation** | Superior GNSS support, IOD | Integrated targeting | Starter Kalman filter (fswkit.c) | CKF/EKF with auto-diff STM |
+| **Solvers** | External optimization | Built-in DC, NLP, targeting | None | Newton-Raphson DC, hyperdual |
+| **Visualization** | None (external) | Integrated 3D/2D plotting | Real-time 3D attitude display | None (external) |
+| **Learning Curve** | Steeper (API-based) | Moderate (GUI + script) | Moderate (config files) | Moderate (Rust API) |
+| **Use Case** | Flight dynamics, navigation | Mission analysis | ADCS development | Monte Carlo, OD, lunar ops |
+| **License** | Apache 2.0 | Apache 2.0 | NASA Open Source | AGPLv3 (commercial available) |
 
 ---
 
@@ -264,72 +280,75 @@ This project aims to unify capabilities from major open-source space flight dyna
 
 ### Orbital Elements
 
-| Concept | OreKit | GMAT | 42 | SFDaaS |
-|---------|--------|------|-----|--------|
-| Semi-major axis | `a` | `SMA` | `SMA` | N/A (Cartesian) |
-| Eccentricity | `e` | `ECC` | `ecc` | N/A |
-| Inclination | `i` | `INC` | `inc` | N/A |
-| RAAN | `Ω` (omega) | `RAAN` | `RAAN` | N/A |
-| Arg of Periapsis | `ω` (smallOmega) | `AOP` | `ArgP` | N/A |
-| True Anomaly | `ν` (nu) | `TA` | `anom` | N/A |
-| Mean Anomaly | `M` | `MA` | `MeanAnom` | N/A |
-| Position X | `position.getX()` | `X` | `PosN[0]` | `r0[0]` |
-| Position Y | `position.getY()` | `Y` | `PosN[1]` | `r0[1]` |
-| Position Z | `position.getZ()` | `Z` | `PosN[2]` | `r0[2]` |
-| Velocity X | `velocity.getX()` | `VX` | `VelN[0]` | `v0[0]` |
-| Velocity Y | `velocity.getY()` | `VY` | `VelN[1]` | `v0[1]` |
-| Velocity Z | `velocity.getZ()` | `VZ` | `VelN[2]` | `v0[2]` |
+| Concept | OreKit | GMAT | 42 | Nyx | SFDaaS |
+|---------|--------|------|-----|-----|--------|
+| Semi-major axis | `a` | `SMA` | `SMA` | `sma_km()` | N/A (Cartesian) |
+| Eccentricity | `e` | `ECC` | `ecc` | `ecc()` | N/A |
+| Inclination | `i` | `INC` | `inc` | `inc_deg()` | N/A |
+| RAAN | `Ω` (omega) | `RAAN` | `RAAN` | `raan_deg()` | N/A |
+| Arg of Periapsis | `ω` (smallOmega) | `AOP` | `ArgP` | `aop_deg()` | N/A |
+| True Anomaly | `ν` (nu) | `TA` | `anom` | `ta_deg()` | N/A |
+| Mean Anomaly | `M` | `MA` | `MeanAnom` | `ma_deg()` | N/A |
+| Eccentric Anomaly | N/A | N/A | N/A | `ea_deg()` | N/A |
+| Position X | `position.getX()` | `X` | `PosN[0]` | `r[0]` | `r0[0]` |
+| Position Y | `position.getY()` | `Y` | `PosN[1]` | `r[1]` | `r0[1]` |
+| Position Z | `position.getZ()` | `Z` | `PosN[2]` | `r[2]` | `r0[2]` |
+| Velocity X | `velocity.getX()` | `VX` | `VelN[0]` | `v[0]` | `v0[0]` |
+| Velocity Y | `velocity.getY()` | `VY` | `VelN[1]` | `v[1]` | `v0[1]` |
+| Velocity Z | `velocity.getZ()` | `VZ` | `VelN[2]` | `v[2]` | `v0[2]` |
 
 ### Propagation Parameters
 
-| Concept | OreKit | GMAT | 42 | SFDaaS |
-|---------|--------|------|-----|--------|
-| Step size | `stepSize` | `InitialStepSize` | `DT` | `stepSize` |
-| Min step | `minStep` | `MinStep` | N/A | `minStep` |
-| Max step | `maxStep` | `MaxStep` | N/A | `maxStep` |
-| Position tolerance | `positionTolerance` | (part of `Accuracy`) | N/A | `positionTolerance` |
-| Velocity tolerance | `velocityTolerance` | (part of `Accuracy`) | N/A | `velocityTolerance` |
+| Concept | OreKit | GMAT | 42 | Nyx | SFDaaS |
+|---------|--------|------|-----|-----|--------|
+| Step size | `stepSize` | `InitialStepSize` | `DT` | (adaptive) | `stepSize` |
+| Min step | `minStep` | `MinStep` | N/A | (adaptive) | `minStep` |
+| Max step | `maxStep` | `MaxStep` | N/A | (adaptive) | `maxStep` |
+| Position tolerance | `positionTolerance` | (part of `Accuracy`) | N/A | (integrator tolerance) | `positionTolerance` |
+| Velocity tolerance | `velocityTolerance` | (part of `Accuracy`) | N/A | (integrator tolerance) | `velocityTolerance` |
 
 ### Integrator Types
 
-| Description | OreKit | GMAT | 42 | SFDaaS |
-|-------------|--------|------|-----|--------|
-| Runge-Kutta 4th order | `ClassicalRungeKuttaIntegrator` | N/A | ✅ (default) | `rungekutta` |
-| Runge-Kutta 8/9 | N/A | `RungeKutta89` | N/A | N/A |
-| Dormand-Prince 8(5,3) | `DormandPrince853Integrator` | `PrinceDormand78` | N/A | `dormandprince` |
-| Adams-Bashforth | `AdamsBashforthIntegrator` | `AdamsBashforthMoulton` | N/A | `adamsbashforth` |
-| Adams-Moulton | `AdamsMoultonIntegrator` | (combined above) | N/A | `adamsmoulton` |
+| Description | OreKit | GMAT | 42 | Nyx | SFDaaS |
+|-------------|--------|------|-----|-----|--------|
+| Runge-Kutta 4th order | `ClassicalRungeKuttaIntegrator` | N/A | ✅ (default) | ✅ | `rungekutta` |
+| Runge-Kutta 8/9 | N/A | `RungeKutta89` | N/A | ✅ | N/A |
+| Dormand-Prince 7(8) | `DormandPrince853Integrator` | `PrinceDormand78` | N/A | ✅ | `dormandprince` |
+| Adams-Bashforth | `AdamsBashforthIntegrator` | `AdamsBashforthMoulton` | N/A | N/A | `adamsbashforth` |
+| Adams-Moulton | `AdamsMoultonIntegrator` | (combined above) | N/A | N/A | `adamsmoulton` |
 
 ### Reference Frames
 
-| Description | OreKit | GMAT | 42 | SFDaaS |
-|-------------|--------|------|-----|--------|
-| J2000 Equatorial | `FramesFactory.getEME2000()` | `EarthMJ2000Eq` | `J` frame | `eme2000` |
-| J2000 Ecliptic | N/A | `EarthMJ2000Ec` | `H` frame | N/A |
-| GCRF/ICRF | `FramesFactory.getGCRF()` | `EarthICRF` | N/A | `gcrf` |
-| Earth-Fixed | `FramesFactory.getITRF()` | `EarthFixed` | `W` frame | `itrf` |
-| Body Frame | N/A | N/A | `B` frame | N/A |
-| LVLH | `LOFType.LVLH` | `LVLH` | `L` frame | N/A |
+| Description | OreKit | GMAT | 42 | Nyx | SFDaaS |
+|-------------|--------|------|-----|-----|--------|
+| J2000 Equatorial | `FramesFactory.getEME2000()` | `EarthMJ2000Eq` | `J` frame | ECI (via ANISE) | `eme2000` |
+| J2000 Ecliptic | N/A | `EarthMJ2000Ec` | `H` frame | N/A | N/A |
+| GCRF/ICRF | `FramesFactory.getGCRF()` | `EarthICRF` | N/A | Via ANISE | `gcrf` |
+| Earth-Fixed | `FramesFactory.getITRF()` | `EarthFixed` | `W` frame | IAU Earth | `itrf` |
+| Body Frame | N/A | N/A | `B` frame | N/A | N/A |
+| LVLH | `LOFType.LVLH` | `LVLH` | `L` frame | N/A | N/A |
+| VNC | `LOFType.VNC` | `VNB` | N/A | VNC | N/A |
+| RIC | N/A | N/A | N/A | RIC | N/A |
 
 ### Spacecraft Properties
 
-| Concept | OreKit | GMAT | 42 | SFDaaS |
-|---------|--------|------|-----|--------|
-| Dry Mass | `SpacecraftState.getMass()` | `DryMass` | `mass` | N/A |
-| Drag Coefficient | `IsotropicDrag.getCd()` | `Cd` | `Cd` | N/A |
-| Reflectivity Coeff | `IsotropicRadiationSingleCoefficient.getCr()` | `Cr` | `SpecFrac`, `DiffFrac` | N/A |
-| Drag Area | `IsotropicDrag.getCrossSection()` | `DragArea` | Recomputed per timestep | N/A |
-| SRP Area | `IsotropicRadiationSingleCoefficient.getCrossSection()` | `SRPArea` | Recomputed per timestep | N/A |
-| Inertia Tensor | N/A | N/A | `I` (3x3) | N/A |
+| Concept | OreKit | GMAT | 42 | Nyx | SFDaaS |
+|---------|--------|------|-----|-----|--------|
+| Dry Mass | `SpacecraftState.getMass()` | `DryMass` | `mass` | Instantaneous mass | N/A |
+| Drag Coefficient | `IsotropicDrag.getCd()` | `Cd` | `Cd` | (implicit in drag model) | N/A |
+| Reflectivity Coeff | `IsotropicRadiationSingleCoefficient.getCr()` | `Cr` | `SpecFrac`, `DiffFrac` | `Cr` (estimable) | N/A |
+| Drag Area | `IsotropicDrag.getCrossSection()` | `DragArea` | Recomputed per timestep | (implicit) | N/A |
+| SRP Area | `IsotropicRadiationSingleCoefficient.getCrossSection()` | `SRPArea` | Recomputed per timestep | `𝒜` (area) | N/A |
+| Inertia Tensor | N/A | N/A | `I` (3x3) | N/A | N/A |
 
 ### Attitude Representations
 
-| Concept | OreKit | GMAT | 42 |
-|---------|--------|------|-----|
-| Quaternion | `Rotation.getQ0/Q1/Q2/Q3()` | `Q1, Q2, Q3, Q4` | `q` (4-vector) |
-| Euler Angles | `Rotation.getAngles()` | `EulerAngle1/2/3` | `Ang` (3-vector) |
-| DCM | `Rotation.getMatrix()` | `DCM11...DCM33` | `C` (3x3) |
-| Angular Velocity | `AngularCoordinates.getRotationRate()` | `EulerAngleRate1/2/3` | `wbn` (3-vector) |
+| Concept | OreKit | GMAT | 42 | Nyx |
+|---------|--------|------|-----|-----|
+| Quaternion | `Rotation.getQ0/Q1/Q2/Q3()` | `Q1, Q2, Q3, Q4` | `q` (4-vector) | N/A |
+| Euler Angles | `Rotation.getAngles()` | `EulerAngle1/2/3` | `Ang` (3-vector) | N/A |
+| DCM | `Rotation.getMatrix()` | `DCM11...DCM33` | `C` (3x3) | N/A |
+| Angular Velocity | `AngularCoordinates.getRotationRate()` | `EulerAngleRate1/2/3` | `wbn` (3-vector) | N/A |
 
 ### Sensors (42)
 
@@ -355,13 +374,13 @@ This project aims to unify capabilities from major open-source space flight dyna
 
 ## Gravitational Parameters (μ in m³/s²)
 
-| Body | OreKit | GMAT | 42 | SFDaaS |
-|------|--------|------|-----|--------|
-| Earth | `Constants.EGM96_EARTH_MU` (3.986004415e14) | 3.986004418e14 | 3.986004418e14 | 3.986004418e14 |
-| Sun | `Constants.JPL_SSD_SUN_GM` | 1.32712440018e20 | 1.32712440018e20 | 1.32712440018e20 |
-| Moon | `Constants.JPL_SSD_MOON_GM` | 4.9028e12 | 4.9028e12 | 4.9028e12 |
-| Mars | via CelestialBodyFactory | 4.282837e13 | 4.282837e13 | 4.282837e13 |
-| Jupiter | via CelestialBodyFactory | 1.26686534e17 | 1.26686534e17 | 1.26686534e17 |
+| Body | OreKit | GMAT | 42 | Nyx | SFDaaS |
+|------|--------|------|-----|-----|--------|
+| Earth | `Constants.EGM96_EARTH_MU` (3.986004415e14) | 3.986004418e14 | 3.986004418e14 | Via ANISE/DE440 | 3.986004418e14 |
+| Sun | `Constants.JPL_SSD_SUN_GM` | 1.32712440018e20 | 1.32712440018e20 | Via ANISE/DE440 | 1.32712440018e20 |
+| Moon | `Constants.JPL_SSD_MOON_GM` | 4.9028e12 | 4.9028e12 | Via ANISE/DE440 | 4.9028e12 |
+| Mars | via CelestialBodyFactory | 4.282837e13 | 4.282837e13 | Via ANISE/DE440 | 4.282837e13 |
+| Jupiter | via CelestialBodyFactory | 1.26686534e17 | 1.26686534e17 | Via ANISE/DE440 | 1.26686534e17 |
 
 ---
 
@@ -369,24 +388,24 @@ This project aims to unify capabilities from major open-source space flight dyna
 
 ### Propagator Defaults
 
-| Parameter | OreKit | GMAT | 42 | SFDaaS |
-|-----------|--------|------|-----|--------|
-| Step Size | User-defined | 60 s | User-defined | 60 s |
-| Min Step | User-defined | 0.001 s | N/A | 0.001 s |
-| Max Step | User-defined | 2700 s | N/A | 1000 s |
-| Position Tolerance | User-defined | (via Accuracy) | N/A | 10 m |
-| Velocity Tolerance | User-defined | (via Accuracy) | N/A | 0.01 m/s |
+| Parameter | OreKit | GMAT | 42 | Nyx | SFDaaS |
+|-----------|--------|------|-----|-----|--------|
+| Step Size | User-defined | 60 s | User-defined | Adaptive | 60 s |
+| Min Step | User-defined | 0.001 s | N/A | Adaptive | 0.001 s |
+| Max Step | User-defined | 2700 s | N/A | Adaptive | 1000 s |
+| Position Tolerance | User-defined | (via Accuracy) | N/A | User-defined | 10 m |
+| Velocity Tolerance | User-defined | (via Accuracy) | N/A | User-defined | 0.01 m/s |
 
 ### Force Model Defaults
 
-| Property | OreKit | GMAT | 42 |
-|----------|--------|------|-----|
-| Central Body | User-defined | Earth | Earth |
-| Gravity Degree | User-defined | 4 | 18 |
-| Gravity Order | User-defined | 4 | 18 |
-| Gravity Model | User-defined | JGM2 | EGM96 |
-| Atmospheric Model | User-defined | Jacchia-Roberts | NRLMSISE-00 |
-| Magnetic Field | IGRF/WMM | N/A | IGRF |
+| Property | OreKit | GMAT | 42 | Nyx |
+|----------|--------|------|-----|-----|
+| Central Body | User-defined | Earth | Earth | User-defined |
+| Gravity Degree | User-defined | 4 | 18 | User-defined (70x70 demonstrated) |
+| Gravity Order | User-defined | 4 | 18 | User-defined |
+| Gravity Model | User-defined | JGM2 | EGM96 | JGM3, EGM2008 |
+| Atmospheric Model | User-defined | Jacchia-Roberts | NRLMSISE-00 | 1976 Standard Atmosphere |
+| Magnetic Field | IGRF/WMM | N/A | IGRF | N/A |
 
 ---
 
@@ -400,6 +419,12 @@ This project aims to unify capabilities from major open-source space flight dyna
 - [42 NASA Software Catalog](https://software.nasa.gov/software/GSC-16720-1)
 - [42 Introduction to Simulation (PDF)](https://granasat.ugr.es/wp-content/uploads/2019/02/42-Intro-to-Simulation.pdf)
 - [42 NASA Technical Report](https://ntrs.nasa.gov/citations/20180000954)
+- [Nyx GitHub Repository](https://github.com/nyx-space/nyx)
+- [Nyx Space Website](https://nyxspace.com/)
+- [Nyx on crates.io](https://crates.io/crates/nyx-space)
+- [Nyx Rust Documentation](https://docs.rs/nyx-space/latest/nyx_space/)
+- [ANISE (SPICE Replacement)](https://github.com/nyx-space/anise)
+- [Hifitime (Time Library)](https://github.com/nyx-space/hifitime)
 
 ---
 
@@ -1078,6 +1103,106 @@ Socket utilities (`InitSocketServer`, `InitSocketClient`) reside in `Kit/Source/
 
 ---
 
+### Nyx Architecture
+
+**Repository:** [GitHub](https://github.com/nyx-space/nyx)
+**Language:** Rust (100%)
+**License:** AGPLv3 (commercial license available for >$1M revenue entities)
+**Latest Version:** 2.2.0 (crates.io)
+
+#### Design Philosophy
+
+Nyx was designed for **high-fidelity, high-performance astrodynamics** with a focus on minimal memory allocations, automatic differentiation via hyperdual numbers, and validation against NASA GMAT. It replaces SPICE with ANISE (a modern Rust-native ephemeris library) and uses hifitime for nanosecond-precision time management.
+
+#### Key Dependencies
+
+| Crate | Purpose |
+|-------|---------|
+| `nalgebra` | Linear algebra (vectors, matrices) |
+| `hifitime` | Time management (nanosecond precision, all time scales) |
+| `anise` | Ephemeris and frame transformations (SPICE replacement) |
+| `hyperdual` | Automatic differentiation for STM computation |
+
+#### Key Type Hierarchy
+
+```rust
+// Core orbital state
+Orbit {
+    epoch: Epoch,           // hifitime Epoch
+    x_km, y_km, z_km,      // Position (km)
+    vx_km_s, vy_km_s, vz_km_s, // Velocity (km/s)
+    frame: Frame,           // Reference frame (via ANISE)
+}
+
+// Spacecraft with physical properties
+Spacecraft {
+    orbit: Orbit,
+    dry_mass_kg: f64,
+    fuel_mass_kg: f64,
+    srp_area_m2: f64,
+    drag_area_m2: f64,
+    cr: f64,                // SRP reflectivity coefficient
+    cd: f64,                // Drag coefficient
+    stm: Option<Matrix6>,   // State transition matrix
+}
+
+// Force models
+OrbitalDynamics {
+    accel_models: Vec<Arc<dyn AccelModel>>,
+    // Includes: PointMasses, Harmonics, SRP, Drag
+}
+
+// Orbit determination
+ODProcess<Filter> {
+    prop: Propagator,
+    kf: Filter,            // CKF or EKF
+    devices: Vec<GroundStation>,
+    measurements: Vec<Measurement>,
+}
+```
+
+#### Integration Pattern
+
+```rust
+use nyx::prelude::*;
+
+// Load ephemeris
+let almanac = Almanac::default().unwrap();
+
+// Define orbit (Keplerian)
+let orbit = Orbit::keplerian(
+    7000.0,                    // SMA (km)
+    0.001,                     // Eccentricity
+    98.0,                      // Inclination (deg)
+    0.0,                       // RAAN (deg)
+    0.0,                       // AOP (deg)
+    0.0,                       // True anomaly (deg)
+    Epoch::from_gregorian_utc(2024, 1, 1, 0, 0, 0, 0),
+    almanac.frame_from_uid(EARTH_J2000).unwrap(),
+);
+
+// Configure dynamics with force models
+let dynamics = OrbitalDynamics::point_masses(
+    vec![MOON, SUN, JUPITER_BARYCENTER],
+    almanac.clone(),
+);
+
+// Add spherical harmonics
+let harmonics = Harmonics::from_stor(
+    almanac.frame_from_uid(IAU_EARTH_FRAME).unwrap(),
+    HarmonicsMem::from_cof("JGM3.cof.gz", 70, 70, true).unwrap(),
+);
+
+// Propagate
+let setup = Propagator::rk89(dynamics, PropOpts::default());
+let final_state = setup
+    .with(orbit.into(), almanac)
+    .for_duration(1.0_f64.days())
+    .unwrap();
+```
+
+---
+
 ## Architecture Diagrams
 
 ### Individual Tool Architectures
@@ -1218,6 +1343,52 @@ graph TB
     style Output fill:#2d4a6f,stroke:#4a9eff,color:#fff
 ```
 
+#### Nyx Architecture
+
+```mermaid
+graph TB
+    subgraph Nyx["Nyx Astrodynamics"]
+        subgraph CoreTypes["Core Types"]
+            OrbitType["🛰️ Orbit<br/>Cartesian/Keplerian<br/>Epoch, Frame"]
+            SCraft["🚀 Spacecraft<br/>Mass, Cr, Cd<br/>SRP/Drag area"]
+            EpochType["⏱️ Epoch (hifitime)<br/>UTC/TAI/TT/TDB/GPS<br/>Nanosecond precision"]
+        end
+
+        subgraph Dynamics["Dynamics Engine"]
+            OrbDyn["🌍 OrbitalDynamics<br/>Point masses<br/>Harmonics 70x70<br/>SRP, Drag"]
+            Integrators["🔢 Integrators<br/>RK4, RK89<br/>Dormand-Prince 7(8)"]
+            AutoDiff["⚡ Auto-Diff<br/>Hyperdual numbers<br/>STM computation"]
+        end
+
+        subgraph Estimation["Orbit Determination"]
+            KalmanFilters["📊 Kalman Filters<br/>CKF, EKF<br/>Joseph update"]
+            GroundStations["📡 Ground Stations<br/>Range, Doppler<br/>Light-time corrected"]
+            Covariance["📉 Covariance<br/>Propagation<br/>RIC frame"]
+        end
+
+        subgraph External["External Libraries"]
+            ANISE["🔭 ANISE<br/>Ephemeris/Frames<br/>(SPICE replacement)"]
+            Hifitime["⏱️ Hifitime<br/>Time scales<br/>Nanosecond"]
+            Nalgebra["🔢 nalgebra<br/>Linear algebra"]
+        end
+
+        subgraph FileIO["File I/O"]
+            CCSDS["📄 CCSDS OEM/TDM"]
+            SPICE["📁 SPICE kernels"]
+            STK["📁 STK .e files"]
+        end
+    end
+
+    Nyx --> RustApp["Rust / Python Application"]
+
+    style Nyx fill:#1e3a5f,stroke:#4a9eff,color:#fff
+    style CoreTypes fill:#2d4a6f,stroke:#4a9eff,color:#fff
+    style Dynamics fill:#2d4a6f,stroke:#4a9eff,color:#fff
+    style Estimation fill:#2d4a6f,stroke:#4a9eff,color:#fff
+    style External fill:#2d4a6f,stroke:#4a9eff,color:#fff
+    style FileIO fill:#2d4a6f,stroke:#4a9eff,color:#fff
+```
+
 ### Unified Architecture
 
 ```mermaid
@@ -1238,6 +1409,7 @@ graph TB
             OreKit["☕ OreKit<br/>(via JNI/Py4J)<br/>─────────<br/>• Orbit Determination<br/>• GNSS Processing<br/>• DSST<br/>• Estimation<br/>• File Formats"]
             GMAT["🚀 GMAT<br/>(via C++/SWIG)<br/>─────────<br/>• Mission Design<br/>• Targeting<br/>• Optimization<br/>• Visualization<br/>• Scripting"]
             FortyTwo["🛰️ 42<br/>(via IPC/FFI)<br/>─────────<br/>• ADCS Design<br/>• 6-DOF Attitude<br/>• Sensors/Actuators<br/>• HIL Testing<br/>• Multi-body"]
+            NyxBackend["🦀 Nyx<br/>(via Rust FFI/PyO3)<br/>─────────<br/>• Monte Carlo<br/>• OD (CKF/EKF)<br/>• Auto-Diff STM<br/>• Cislunar<br/>• WASM"]
         end
 
         subgraph DataStore["Unified Data Store"]
@@ -1262,9 +1434,11 @@ graph TB
     UnitConverter --> OreKit
     UnitConverter --> GMAT
     UnitConverter --> FortyTwo
+    UnitConverter --> NyxBackend
     OreKit --> DataStore
     GMAT --> DataStore
     FortyTwo --> DataStore
+    NyxBackend --> DataStore
     DataStore --> WebInterface
 
     style Platform fill:#0d1b2a,stroke:#4a9eff,color:#fff
@@ -1295,10 +1469,12 @@ flowchart TB
         OreKitProp["☕ OreKit<br/>NumProp"]
         GMATprop["🚀 GMAT<br/>NumProp"]
         FortyTwoDyn["🛰️ 42<br/>Dynamics"]
+        NyxProp["🦀 Nyx<br/>NumProp"]
     end
 
     subgraph EstBackends["Estimation Backend"]
         OreKitEst["☕ OreKit<br/>EKF/UKF"]
+        NyxEst["🦀 Nyx<br/>CKF/EKF"]
     end
 
     subgraph ADCSBackends["ADCS Backend"]
@@ -1319,13 +1495,17 @@ flowchart TB
     PropReq --> OreKitProp
     PropReq --> GMATprop
     PropReq --> FortyTwoDyn
+    PropReq --> NyxProp
     EstReq --> OreKitEst
+    EstReq --> NyxEst
     ADCSReq --> FortyTwoADCS
 
     OreKitProp --> Aggregator
     GMATprop --> Aggregator
     FortyTwoDyn --> Aggregator
+    NyxProp --> Aggregator
     OreKitEst --> Aggregator
+    NyxEst --> Aggregator
     FortyTwoADCS --> Aggregator
 
     Aggregator --> Response --> Client
@@ -1433,27 +1613,30 @@ flowchart TB
 #### 3. Backend Routing Logic
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                    Backend Selection Matrix                      │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  Task                          │ Primary Backend │ Fallback     │
-│  ─────────────────────────────┼─────────────────┼─────────────  │
-│  Numerical propagation         │ OreKit          │ GMAT         │
-│  Analytical propagation        │ OreKit          │ GMAT         │
-│  SGP4/SDP4 (TLE)              │ OreKit          │ GMAT         │
-│  DSST (semi-analytical)        │ OreKit          │ -            │
-│  Mission sequence              │ GMAT            │ -            │
-│  Targeting/optimization        │ GMAT            │ -            │
-│  Orbit determination           │ OreKit          │ GMAT         │
-│  GNSS processing               │ OreKit          │ -            │
-│  6-DOF attitude dynamics       │ 42              │ -            │
-│  Sensor/actuator modeling      │ 42              │ -            │
-│  Hardware-in-the-loop          │ 42              │ -            │
-│  3D visualization              │ GMAT            │ 42           │
-│  Collision probability         │ OreKit          │ -            │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────┐
+│                       Backend Selection Matrix                            │
+├──────────────────────────────────────────────────────────────────────────┤
+│                                                                           │
+│  Task                          │ Primary Backend │ Fallback              │
+│  ─────────────────────────────┼─────────────────┼────────────────────── │
+│  Numerical propagation         │ OreKit          │ Nyx, GMAT            │
+│  Analytical propagation        │ OreKit          │ GMAT                 │
+│  SGP4/SDP4 (TLE)              │ OreKit          │ GMAT                 │
+│  DSST (semi-analytical)        │ OreKit          │ -                    │
+│  Mission sequence              │ GMAT            │ -                    │
+│  Targeting/optimization        │ GMAT            │ Nyx (DC only)        │
+│  Orbit determination           │ OreKit          │ Nyx, GMAT            │
+│  GNSS processing               │ OreKit          │ -                    │
+│  Monte Carlo analysis          │ Nyx             │ -                    │
+│  6-DOF attitude dynamics       │ 42              │ -                    │
+│  Sensor/actuator modeling      │ 42              │ -                    │
+│  Hardware-in-the-loop          │ 42              │ -                    │
+│  3D visualization              │ GMAT            │ 42                   │
+│  Collision probability         │ OreKit          │ -                    │
+│  Cislunar/lunar missions       │ Nyx             │ GMAT, OreKit         │
+│  Browser/WASM execution        │ Nyx             │ 42                   │
+│                                                                           │
+└──────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -1543,7 +1726,33 @@ flowchart TB
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### Phase 4: Production Readiness (Weeks 13-16)
+### Phase 3.5: Nyx Integration (Weeks 11-13)
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  3.5.1 Nyx Backend                                               │
+│  ─────────────────────────────────────────────────────────────  │
+│  □ Rust FFI wrapper or Python (PyO3) integration                │
+│  □ Propagation endpoints (RK89, harmonics, SRP, drag)           │
+│  □ Orbit determination endpoints (CKF/EKF)                      │
+│  □ Monte Carlo analysis endpoints                               │
+│  □ CCSDS OEM/TDM file support                                  │
+├─────────────────────────────────────────────────────────────────┤
+│  3.5.2 WASM Build                                                │
+│  ─────────────────────────────────────────────────────────────  │
+│  □ wasm-pack build for browser-only propagation                 │
+│  □ JavaScript/TypeScript API bindings                           │
+│  □ Ephemeris data loading strategy (fetch + IndexedDB)          │
+├─────────────────────────────────────────────────────────────────┤
+│  3.5.3 Cross-validation                                          │
+│  ─────────────────────────────────────────────────────────────  │
+│  □ Compare Nyx vs OreKit vs GMAT propagation results            │
+│  □ Validate OD results against LRO reference data               │
+│  □ Benchmark Monte Carlo performance                            │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Phase 4: Production Readiness (Weeks 14-17)
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -1579,6 +1788,7 @@ flowchart TB
 | **OreKit Service** | Java 17+ / Spring Boot | Native OreKit integration |
 | **GMAT Service** | C++/Python via SWIG | Native GMAT integration |
 | **42 Service** | C/Python via FFI or Socket | Native 42 integration |
+| **Nyx Service** | Rust / Python via PyO3 | Native Nyx integration, WASM-capable |
 | **Message Queue** | Redis or RabbitMQ | Async job processing |
 | **Cache** | Redis | State caching, sessions |
 | **Database** | PostgreSQL + TimescaleDB | Time-series ephemeris data |
@@ -1598,6 +1808,7 @@ This section evaluates the technical feasibility and challenges of compiling eac
 | **OreKit** | Java | 🟡 Moderate-High | TeaVM, CheerpJ, GraalVM | GC, Reflection, JVM features, 500K+ LOC |
 | **GMAT** | C++ | 🔴 High | Emscripten | 2M LOC, wxWidgets GUI, many dependencies |
 | **42** | C | 🟢 Moderate | Emscripten | OpenGL→WebGL, File I/O, Socket IPC |
+| **Nyx** | Rust | 🟢 Easy | wasm-pack + wasm-bindgen | Ephemeris data loading, ANISE file I/O |
 
 ### OreKit (Java → WebAssembly)
 
@@ -1839,16 +2050,84 @@ int main() {
 
 ---
 
+### Nyx (Rust → WebAssembly)
+
+#### Compilation Options
+
+| Approach | Maturity | Output | Trade-offs |
+|:---------|:---------|:-------|:-----------|
+| **wasm-pack + wasm-bindgen** | Production-ready | WASM + JS bindings | Best option for Rust; first-class WASM support |
+| **wasm32-unknown-unknown** | Production-ready | Bare WASM | No JS glue; for WASI or custom loaders |
+
+#### Key Advantages
+
+1. **Rust has first-class WASM support** — `wasm32-unknown-unknown` is a tier-1 target
+2. **No garbage collector** — Rust's ownership model maps directly to WASM linear memory
+3. **No runtime overhead** — No GC pauses, no JIT warmup, predictable performance
+4. **Small binary size** — `wasm-opt` and LTO produce compact output
+5. **wasm-bindgen** — Mature JS interop with automatic TypeScript bindings
+
+#### Key Challenges
+
+1. **ANISE Dependency**
+   - ANISE loads ephemeris files (SPK, BPC) which can be large (50-200 MB)
+   - Must pre-bundle or fetch from server
+   - File I/O needs adaptation for browser (fetch API or IndexedDB)
+
+2. **Gravity Model Files**
+   - SHADR/COF files need bundling or server-side loading
+   - Gzip-compressed models help reduce download size
+
+3. **Threading**
+   - Monte Carlo benefits from multi-threading
+   - WASM threads require SharedArrayBuffer (cross-origin isolation)
+   - Can use Web Workers as alternative
+
+4. **nalgebra Compatibility**
+   - nalgebra compiles to WASM cleanly (pure Rust, no SIMD required)
+   - May lose SIMD optimizations unless using wasm-simd proposal
+
+#### Recommended Approach
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Nyx → WebAssembly Pipeline                                  │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  1. Add wasm32-unknown-unknown target                        │
+│     $ rustup target add wasm32-unknown-unknown               │
+│                                                              │
+│  2. Create nyx-wasm crate with wasm-bindgen exports          │
+│     #[wasm_bindgen]                                          │
+│     pub fn propagate(config_json: &str) -> String            │
+│                                                              │
+│  3. Build with wasm-pack                                     │
+│     $ wasm-pack build --target web                           │
+│                                                              │
+│  4. Bundle ephemeris data via fetch or pre-load              │
+│     - Use IndexedDB for caching SPK files                    │
+│                                                              │
+│  5. Expected output size: 2-5 MB (compressed: 0.5-1.5 MB)   │
+│                                                              │
+│  6. Easiest WASM path of all four tools!                     │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+#### Effort Estimate: 1-2 weeks for core propagation and OD functionality
+
+---
+
 ### Comparison Summary
 
-| Aspect | OreKit | GMAT | 42 |
-|:-------|:-------|:-----|:---|
-| **Feasibility** | ✅ Achievable | ⚠️ Challenging | ✅ Achievable |
-| **Effort** | 2-4 weeks | 2-4 months | 2-4 weeks |
-| **Output Size** | 5-15 MB | 20-50 MB | 5-10 MB |
-| **GUI in Browser** | N/A (library) | ❌ Must exclude | ✅ OpenGL→WebGL |
-| **Full Functionality** | ~90% | ~60% (no GUI/plugins) | ~85% (no socket IPC) |
-| **Best Use Case** | Propagation API | Batch processing | Attitude visualization |
+| Aspect | OreKit | GMAT | 42 | Nyx |
+|:-------|:-------|:-----|:---|:----|
+| **Feasibility** | ✅ Achievable | ⚠️ Challenging | ✅ Achievable | ✅ Easiest |
+| **Effort** | 2-4 weeks | 2-4 months | 2-4 weeks | 1-2 weeks |
+| **Output Size** | 5-15 MB | 20-50 MB | 5-10 MB | 2-5 MB |
+| **GUI in Browser** | N/A (library) | ❌ Must exclude | ✅ OpenGL→WebGL | N/A (library) |
+| **Full Functionality** | ~90% | ~60% (no GUI/plugins) | ~85% (no socket IPC) | ~95% (data loading) |
+| **Best Use Case** | Propagation API | Batch processing | Attitude visualization | Propagation + OD API |
 
 ### Recommended Strategy
 
@@ -1857,21 +2136,26 @@ int main() {
 │                    Browser-Based Space Flight Dynamics                       │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
-│  Phase 1: 42-WASM (Quick Win)                                                │
-│  ───────────────────────────                                                 │
+│  Phase 1: Nyx-WASM (Quickest Win)                                            │
+│  ────────────────────────────────                                            │
+│  • Compile Nyx with wasm-pack (Rust has first-class WASM support)            │
+│  • Client-side propagation + orbit determination                             │
+│  • Smallest binary, no GC overhead, best performance                         │
+│                                                                              │
+│  Phase 2: 42-WASM (Visualization)                                            │
+│  ────────────────────────────────                                            │
 │  • Compile 42 with Emscripten for attitude visualization                     │
 │  • Full 3D spacecraft rendering in browser                                   │
 │  • Interactive GNC demonstration                                             │
 │                                                                              │
-│  Phase 2: OreKit-WASM (Core Capability)                                      │
-│  ──────────────────────────────────────                                      │
-│  • Compile OreKit with TeaVM for propagation                                 │
-│  • Client-side orbit prediction                                              │
-│  • Offline-capable progressive web app                                       │
+│  Phase 3: OreKit-WASM (GNSS/IOD)                                             │
+│  ────────────────────────────────                                            │
+│  • Compile OreKit with TeaVM for GNSS processing and IOD                     │
+│  • Capabilities not covered by Nyx (DSST, GNSS, collision probability)       │
 │                                                                              │
-│  Phase 3: Hybrid Architecture                                                │
+│  Phase 4: Hybrid Architecture                                                │
 │  ───────────────────────────                                                 │
-│  • OreKit-WASM + 42-WASM in browser                                          │
+│  • Nyx-WASM + 42-WASM + OreKit-WASM in browser                              │
 │  • GMAT on server for mission design/optimization                            │
 │  • WebSocket communication for complex tasks                                 │
 │                                                                              │
