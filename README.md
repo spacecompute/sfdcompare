@@ -198,7 +198,24 @@ This project aims to unify capabilities from major open-source space flight dyna
 | **Thrusters (ACS)** | ✅ | ✅ | ✅ | ❌ |
 | **Ground Station Tracking** | ✅ | ✅ | ❌ | ✅ Range/Doppler (DSN validated) |
 
-### 13. File Formats
+### 13. RF / Communications Modeling
+
+| Feature | OreKit | GMAT | 42 | Nyx |
+|---------|--------|------|-----|-----|
+| **Link Budget Analysis** | ❌ | ❌ | ✅ EIRP, path loss, CNR (Ippolito/SMAD) | ❌ |
+| **Uplink/Downlink/Crosslink** | ❌ | ❌ | ✅ Ground-to-SC, SC-to-ground, SC-to-SC | ❌ |
+| **Antenna Gain Patterns** | ❌ | ❌ | ✅ 3D mesh-based patterns (OBJ files) | ❌ |
+| **Free-Space Path Loss** | ❌ | ❌ | ✅ | ❌ |
+| **Atmospheric Loss** | ❌ | ❌ | ✅ Stochastic correlated model | ❌ |
+| **Doppler Shift** | ❌ | ❌ | ✅ Frequency-based from range-rate | ❌ |
+| **Light-Time Delay** | ✅ Measurement corrections | ❌ | ✅ Iterative convergence | ✅ Measurement corrections |
+| **Occultation** | ✅ | ✅ | ✅ Body occultation per link | ✅ |
+| **Carrier-to-Noise Ratio** | ❌ | ❌ | ✅ | ❌ |
+| **Power Flux Density** | ❌ | ❌ | ✅ | ❌ |
+| **Configurable Tx/Rx** | ❌ | ❌ | ✅ Tx power, Rx noise, antenna mounting | ❌ |
+| **Configuration File** | N/A | N/A | `Inp_CommLink.txt` | N/A |
+
+### 14. File Formats
 
 | Feature | OreKit | GMAT | 42 | Nyx |
 |---------|--------|------|-----|-----|
@@ -213,7 +230,7 @@ This project aims to unify capabilities from major open-source space flight dyna
 | **Plain Text Config** | ❌ | ✅ Script files | ✅ Input files | ❌ (Rust API) |
 | **Socket IPC** | ❌ | ❌ | ✅ External app interface | ❌ |
 
-### 14. Visualization & Output
+### 15. Visualization & Output
 
 | Feature | OreKit | GMAT | 42 | Nyx |
 |---------|--------|------|-----|-----|
@@ -224,7 +241,7 @@ This project aims to unify capabilities from major open-source space flight dyna
 | **Report Files** | ❌ | ✅ ReportFile | ✅ Text output | ✅ CCSDS OEM export |
 | **Real-time Display** | ❌ | ❌ | ✅ | ❌ |
 
-### 15. Scripting & Integration
+### 16. Scripting & Integration
 
 | Feature | OreKit | GMAT | 42 | Nyx |
 |---------|--------|------|-----|-----|
@@ -239,7 +256,7 @@ This project aims to unify capabilities from major open-source space flight dyna
 | **Plugin System** | ❌ | ✅ Custom C++ plugins | ❌ | ❌ |
 | **Crate/Package** | Maven Central | N/A | N/A | crates.io (nyx-space) |
 
-### 16. Special Capabilities
+### 17. Special Capabilities
 
 | Feature | OreKit | GMAT | 42 | Nyx |
 |---------|--------|------|-----|-----|

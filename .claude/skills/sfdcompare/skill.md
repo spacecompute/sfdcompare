@@ -19,7 +19,7 @@ Reference and update the OreKit vs GMAT vs 42 vs Nyx feature comparison maintain
 
 | Section | Content |
 |---------|---------|
-| Feature Comparison (Tables 1-16) | Side-by-side capability matrix: propagation, force models, coordinates, orbit rep, time, maneuvers, solvers, events, OD, spacecraft modeling, attitude, sensors/actuators, file formats, visualization, scripting, special capabilities |
+| Feature Comparison (Tables 1-17) | Side-by-side capability matrix: propagation, force models, coordinates, orbit rep, time, maneuvers, solvers, events, OD, spacecraft modeling, attitude, sensors/actuators, file formats, visualization, scripting, special capabilities, RF/communications modeling |
 | Summary Comparison | High-level overview table (purpose, architecture, best-for, strengths) |
 | Variable Name Mapping | Cross-reference of variable names across all four tools (orbital elements, propagation params, integrators, frames, spacecraft properties, attitude, sensors, actuators) |
 | Gravitational Parameters | Standard constants for Earth, Sun, Moon, Mars, Jupiter |
@@ -61,7 +61,7 @@ Read the Source Code Analysis section for the requested tool (OreKit, GMAT, 42, 
 
 When updating any 42/OreKit/GMAT/Nyx data, check and update ALL affected locations:
 
-1. **Feature comparison tables** (16 tables in the Feature Comparison section)
+1. **Feature comparison tables** (17 tables in the Feature Comparison section)
 2. **Summary Comparison table**
 3. **Variable Name Mapping tables** (orbital elements, propagation params, integrators, frames, spacecraft properties, attitude)
 4. **Default Values** (propagator defaults, force model defaults)
@@ -94,6 +94,7 @@ These conventions are based on verified feedback from the 42 developer:
 | IPC marshalling | Auto-generated from header markup (`[~>~]`, `[~<~]`, `[~=~]`) via Julia scripts in `MetaCode/` |
 | Socket utilities | `InitSocketServer`, `InitSocketClient` in `Kit/Source/iokit.c` |
 | AcType (FSW struct) | Defined in `Include/AcTypes.h` (distinct from SCType) |
+| RF/CommLink | Full link budget in `Source/42commlink.c`; configured via `Inp_CommLink.txt`; supports uplink, downlink, crosslink; antenna patterns from OBJ mesh files; references Ippolito (Wiley 2008) and Wertz (New SMAD 2011) |
 
 ## Key Conventions for GMAT
 
