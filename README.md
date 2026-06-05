@@ -35,7 +35,7 @@ This project aims to unify capabilities from major open-source space flight dyna
 
 | Feature | OreKit | GMAT | 42 | Nyx |
 |---------|--------|------|-----|-----|
-| **Numerical Integrators** | Runge-Kutta (various), Adams-Bashforth, Adams-Moulton, Dormand-Prince | Runge-Kutta, PrinceDormand45/78, Adams-Bashforth-Moulton, Bulirsch-Stoer | 4th-order Runge-Kutta | Runge-Kutta (RK4, RK89), Dormand-Prince 7(8) |
+| **Numerical Integrators** | Runge-Kutta (various), Adams-Bashforth, Adams-Moulton, Dormand-Prince | RK4 (classical, no error control), PrinceDormand45/78, Adams-Bashforth-Moulton, Bulirsch-Stoer | 4th-order Runge-Kutta | Runge-Kutta (RK4, RK89), Dormand-Prince 7(8) |
 | **Analytical Propagators** | Kepler, Brouwer-Lyddane, Eckstein-Hechler | Keplerian (two-body) | Two-body, Three-body | Two-body (Keplerian) |
 | **SGP4/SDP4 (TLE)** | ✅ Full support + TLE generation | ✅ TLE propagation (R2022a+) | ✅ Parses TLEs, converts to other formats | ❌ |
 | **DSST (Semi-analytical)** | ✅ Draper Semi-analytical Satellite Theory | ❌ | ❌ | ❌ |
@@ -56,7 +56,7 @@ This project aims to unify capabilities from major open-source space flight dyna
 | **Atmospheric Drag** | ✅ DTM2000, JB2006/2008, NRLMSISE-00, Harris-Priester | ✅ Jacchia-Roberts, MSISE90, JB2008 | ✅ NRLMSISE-00 (Earth), Exponential (Mars) | ✅ 1976 Standard Atmosphere |
 | **Solar Radiation Pressure** | ✅ With eclipse modeling | ✅ Basic + N-plate SRP (R2022a+) | ✅ | ✅ Spherical (cannonball) model |
 | **Solid Tides** | ✅ | ✅ | ❌ | ❌ |
-| **Ocean Tides** | ✅ | ✅ | ❌ | ❌ |
+| **Ocean Tides** | ✅ | ❌ | ❌ | ❌ |
 | **Relativistic Corrections** | ✅ General relativistic effects | ✅ | ❌ | ❌ |
 | **Albedo/IR Radiation** | ✅ Earth albedo and infrared | ❌ | ❌ | ❌ |
 | **Gravity Gradient Torque** | ✅ | ✅ | ✅ | ❌ |
@@ -209,7 +209,7 @@ This project aims to unify capabilities from major open-source space flight dyna
 | **CCSDS TDM** | ✅ | ✅ | ❌ | ✅ Read |
 | **SPICE SPK** | ✅ DE4xx, INPOP | ✅ | ❌ | ✅ Via ANISE (SPK, BPC, PCK, FK) |
 | **RINEX** | ✅ v2, v3, v4 | ❌ | ❌ | ❌ |
-| **STK Ephemeris** | ❌ | ❌ | ❌ | ✅ .e files |
+| **STK Ephemeris** | ❌ | ✅ Generate and propagate .e files | ❌ | ✅ .e files |
 | **Plain Text Config** | ❌ | ✅ Script files | ✅ Input files | ❌ (Rust API) |
 | **Socket IPC** | ❌ | ❌ | ✅ External app interface | ❌ |
 
@@ -231,10 +231,12 @@ This project aims to unify capabilities from major open-source space flight dyna
 | **Native Language** | Java | C++ | C | Rust |
 | **Script Interface** | ❌ (API only) | ✅ MATLAB-like script language | ✅ Text input files | ❌ (API only) |
 | **GUI** | ❌ | ✅ Full GUI | ✅ OpenGL visualization | ❌ |
-| **Python Bindings** | ✅ via JCC or Orekit-Python wrapper | ✅ via SWIG (experimental) | ❌ | ✅ Via PyO3 (nyx-space on PyPI) |
+| **Python Bindings** | ✅ via JCC or Orekit-Python wrapper | ✅ via SWIG interface | ❌ | ✅ Via PyO3 (nyx-space on PyPI) |
+| **Java Interface** | ✅ Native | ✅ via interface | ❌ | ❌ |
 | **MATLAB Integration** | ❌ | ✅ Native MATLAB function calls | ✅ MATLAB support | ❌ |
 | **Socket IPC** | ❌ | ❌ | ✅ Hardware-in-the-loop | ❌ |
 | **Julia Support** | ❌ | ❌ | ✅ | ❌ |
+| **Plugin System** | ❌ | ✅ Custom C++ plugins | ❌ | ❌ |
 | **Crate/Package** | Maven Central | N/A | N/A | crates.io (nyx-space) |
 
 ### 16. Special Capabilities
@@ -251,7 +253,7 @@ This project aims to unify capabilities from major open-source space flight dyna
 | **Lander/Rover Ops** | ❌ | ❌ | ✅ Surface contact dynamics | ❌ |
 | **Flight Software Testing** | ❌ | ❌ | ✅ GNC algorithm validation | ❌ |
 | **Hardware-in-the-Loop** | ❌ | ❌ | ✅ Socket IPC | ❌ |
-| **Monte Carlo Analysis** | ❌ | ❌ | ❌ | ✅ High-performance (5000+ runs) |
+| **Monte Carlo Analysis** | ❌ | ✅ Supported (via scripting) | ❌ | ✅ High-performance (5000+ runs) |
 | **Lunar Missions** | ✅ | ✅ | ✅ | ✅ Blue Ghost, CAPSTONE validated |
 
 ---
@@ -260,7 +262,7 @@ This project aims to unify capabilities from major open-source space flight dyna
 
 | Aspect | OreKit | GMAT | 42 | Nyx |
 |--------|--------|------|-----|-----|
-| **Primary Purpose** | Orbit determination, GNSS, precision ephemeris | Mission design, trajectory optimization | Attitude control system design & test | High-fidelity orbit propagation & OD |
+| **Primary Purpose** | Orbit determination, GNSS, precision ephemeris | Mission design, trajectory optimization, orbit determination | Attitude control system design & test | High-fidelity orbit propagation & OD |
 | **Architecture** | Low-level library (Java) | Complete application (C++ with GUI/Script) | Simulation framework (C) | High-performance library (Rust) |
 | **Best For** | Library integration, OD, GNSS processing | Mission planning, visualization, analysis | GNC design, ADCS validation, HIL testing | Monte Carlo, OD, cislunar missions |
 | **Propagation** | Many analytical options, DSST | Multi-spacecraft synchronization | Multi-body dynamics | High-perf numerical, Monte Carlo |
