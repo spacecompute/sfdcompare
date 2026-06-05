@@ -270,6 +270,7 @@ This project aims to unify capabilities from major open-source space flight dyna
 | **Lander/Rover Ops** | ❌ | ❌ | ✅ Surface contact dynamics | ❌ |
 | **Flight Software Testing** | ❌ | ❌ | ✅ GNC algorithm validation | ❌ |
 | **Hardware-in-the-Loop** | ❌ | ❌ | ✅ Socket IPC | ❌ |
+| **Real-Time Simulation** | ❌ | ❌ | ✅ FAST_TIME, REAL_TIME, EXTERNAL_SYNCH, NOS3_TIME | ❌ |
 | **Monte Carlo Analysis** | ❌ | ✅ Supported (via scripting) | ❌ | ✅ High-performance (5000+ runs) |
 | **Lunar Missions** | ✅ | ✅ | ✅ | ✅ Blue Ghost, CAPSTONE validated |
 
